@@ -6,3 +6,4 @@ djangorestframework
 pytest
 djangorestframework-simplejwt
 django-cors-headers
+gunicorn
