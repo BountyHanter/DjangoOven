@@ -118,7 +118,7 @@ REST_FRAMEWORK = {
 # ============================================================
 
 if not DEBUG:
-    USE_SSL = os.getenv("USE_SSL", False)
+    USE_SSL = os.getenv("USE_SSL", "False").lower() == "true"
 
     # ---------------------------
     # CORS
