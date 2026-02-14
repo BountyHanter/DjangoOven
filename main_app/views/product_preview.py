@@ -49,6 +49,14 @@ class ProductCatalogAPIView(ListAPIView):
             )
         )
 
+        # --- Поиск ---
+        search_query = self.request.query_params.get("search")
+
+        if search_query:
+            queryset = queryset.filter(
+                Q(name__icontains=search_query)
+            )
+
         # --- Фильтр по разделам ---
         section_ids = self.request.query_params.getlist("section")
 

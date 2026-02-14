@@ -153,6 +153,7 @@ curl http://127.0.0.1:8000/health/
 
 ### Query-параметры
 
+- `search` — поиск по названию товара (регистронезависимый, частичное совпадение)
 - `section` — фильтр по разделам (можно несколько): `section=1&section=2`
 - `manufacturer` — фильтр по производителям (можно несколько): `manufacturer=1&manufacturer=2`
 - `fuel_type` — фильтр по типу топлива (можно несколько): `fuel_type=wood&fuel_type=gas`

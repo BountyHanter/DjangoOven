@@ -53,7 +53,7 @@ INSTALLED_APPS = [
 ]
 
 if not DEBUG:
-    INSTALLED_APPS.insert(7, "corsheaders") # pip install django-cors-headers
+    INSTALLED_APPS.append("corsheaders") # pip install django-cors-headers
 
 
 MIDDLEWARE = [
@@ -113,39 +113,70 @@ REST_FRAMEWORK = {
 
 #### РАСКОММЕНТИРУЙ ПРИ ИСПОЛЬЗОВАНИИ CORS ####
 
+# ============================================================
+# CORS / CSRF / SESSION (production configuration)
+# ============================================================
+
 if not DEBUG:
-    CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip() ]
+    USE_SSL = os.getenv("USE_SSL", False)
 
-    # Разрешить доступ ко всем источникам (НЕ ИСПОЛЬЗОВАТЬ В ПРОДАКШЕНЕ!)
-    # Если True, разрешает запросы со всех доменов
-    CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
+    # ---------------------------
+    # CORS
+    # ---------------------------
 
-    # Разрешить передачу куки и авторизационных заголовков (например, JWT, сессии)
-    CORS_ALLOW_CREDENTIALS = True  # Нужен, если используешь аутентификацию через сессии или токены
+    CORS_ALLOWED_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
 
-    # Разрешенные HTTP-методы (какие запросы можно отправлять с фронтенда)
+    # ⚠️ Только для временных тестов
+    CORS_ALLOW_ALL_ORIGINS = (
+        os.getenv("CORS_ALLOW_ALL_ORIGINS", "False").lower() == "true"
+    )
+
+    # разрешить cookies / session auth
+    CORS_ALLOW_CREDENTIALS = True
+
     CORS_ALLOW_METHODS = [
         "GET",
         "POST",
         "PUT",
         "PATCH",
         "DELETE",
-        "OPTIONS"
+        "OPTIONS",
     ]
 
-    # CSRF настройки
-    CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else [
-        "http://localhost", "http://127.0.0.1"]
-    CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE_SECURE", "False") == "True" if DEBUG else True
-    CSRF_COOKIE_SAMESITE = os.getenv("CSRF_COOKIE_SAMESITE", "Lax") if DEBUG else "None"
-    CSRF_COOKIE_HTTPONLY = os.getenv("CSRF_COOKIE_HTTPONLY", "False") == "True"
-    CSRF_COOKIE_DOMAIN = os.getenv("CSRF_COOKIE_DOMAIN", None)  # В dev не задаём, чтобы куки передавались
+    # ---------------------------
+    # CSRF
+    # ---------------------------
 
-    # Настройки сессии
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "False") == "True" if DEBUG else True
-    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax") if DEBUG else "None"
-    SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY", "False") == "True"
-    SESSION_COOKIE_DOMAIN = os.getenv("SESSION_COOKIE_DOMAIN", None)  # В dev не задаём домен
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+
+    # HTTPS-aware настройки
+    CSRF_COOKIE_SECURE = USE_SSL
+    CSRF_COOKIE_HTTPONLY = False
+
+    # SameSite зависит от SSL:
+    # HTTP → Lax
+    # HTTPS → None (иначе cross-site cookies не работают)
+    CSRF_COOKIE_SAMESITE = "None" if USE_SSL else "Lax"
+
+    # домен задаётся только если явно указан
+    CSRF_COOKIE_DOMAIN = os.getenv("CSRF_COOKIE_DOMAIN") or None
+
+    # ---------------------------
+    # SESSION
+    # ---------------------------
+
+    SESSION_COOKIE_SECURE = USE_SSL
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "None" if USE_SSL else "Lax"
+    SESSION_COOKIE_DOMAIN = os.getenv("SESSION_COOKIE_DOMAIN") or None
 
 
 #### РАСКОММЕНТИРУЙ ПРИ ИСПОЛЬЗОВАНИИ SSL\HTTPS ####
@@ -153,16 +184,16 @@ if not DEBUG:
 
 # Настройка SSL\HTTPS
 
-# Безопасные флаги только в проде
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-
+# # Безопасные флаги только в проде
+# if not DEBUG:
+#     SECURE_SSL_REDIRECT = True
+#     SECURE_HSTS_SECONDS = 31536000
+#     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#     SECURE_HSTS_PRELOAD = True
+#     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+#     SESSION_COOKIE_SECURE = True
+#     CSRF_COOKIE_SECURE = True
+#
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
