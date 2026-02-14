@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16
+    restart: always
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "127.0.0.1:6000:5432"
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+
+  web:
+    build: .
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    entrypoint: ["/app/entrypoint.sh"]
+
+    command: >
+      gunicorn config.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 3
+
+    volumes:
+      - .:/app
+
+    depends_on:
+      - db
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    tty: true
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
+volumes:
+  pgdata:
