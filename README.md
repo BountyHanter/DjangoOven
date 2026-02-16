@@ -218,11 +218,28 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/?section=1&manufacturer=2&fu
 ### Что возвращается
 
 Возвращаются все поля модели `Product` + вложенные сущности:
-- `manufacturer`: объект `{id, name}`
-- `sections`: массив `{id, name, slug}`
-- `images`: массив `{image, is_main, ordering}`
-- `documents`: массив `{title, file}`
-- `fuel_type_display`: человекочитаемое название топлива
+
+* `manufacturer` — объект `{id, name}`
+* `sections` — массив путей категорий (breadcrumb). Каждый элемент — полный путь раздела **от корня до конечной категории**, к которой привязан товар.
+* `images` — массив `{image, is_main, ordering}`
+* `documents` — массив `{title, file}`
+* `fuel_type_display` — человекочитаемое название топлива
+
+### ⚠️ Поле `sections`
+
+Поле `sections` возвращает **не отдельные категории**, а их полный путь.
+
+Структура:
+
+```
+sections = [
+    [root_section, ..., leaf_section]
+]
+```
+
+Это сделано для построения breadcrumb-навигации без дополнительной логики на фронтенде.
+
+Если товар привязан к нескольким категориям — возвращается несколько путей.
 
 ### Пример запроса
 ```bash
@@ -237,7 +254,18 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
   "slug": "testovaya-pech-max-pro",
   "manufacturer": { "id": 3, "name": "Harvia" },
   "sections": [
-    { "id": 1, "name": "Основные печи", "slug": "main_oven" }
+    [
+      {
+        "id": 1,
+        "name": "Основные печи",
+        "slug": "main_oven"
+      },
+      {
+        "id": 2,
+        "name": "Дровяные печи",
+        "slug": "wood_oven"
+      }
+    ]
   ],
   "description": "Полное описание товара",
   "video_url": "https://youtube.com/test",

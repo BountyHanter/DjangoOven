@@ -20,7 +20,7 @@ class ProductDetailAPIView(RetrieveAPIView):
             .prefetch_related(
                 "images",
                 "documents",
-                "sections",
+                "sections__parent",
             )
             .annotate(
                 final_price=Case(

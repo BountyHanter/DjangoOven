@@ -96,6 +96,16 @@ class Section(models.Model):
     def get_indent(self) -> str:
         return "-- " * self.get_depth()
 
+    def get_path(self):
+        path = []
+        node = self
+
+        while node:
+            path.append(node)
+            node = node.parent
+
+        return list(reversed(path))
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)

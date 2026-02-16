@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils.text import slugify
+from slugify import slugify
 
 from main_app.models.choices import MATERIAL_CHOICES, FIREBOX_MATERIAL_CHOICES, STONE_MATERIAL_CHOICES, \
     DOOR_TYPE_CHOICES, DOOR_MECHANISM_CHOICES, FIRE_VIEW_CHOICES, GLASS_COUNT_CHOICES, FUEL_TYPE_CHOICES, \

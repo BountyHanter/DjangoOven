@@ -9,11 +9,6 @@ class ManufacturerSerializer(serializers.ModelSerializer):
         model = Manufacturer
         fields = ("id", "name")
 
-class SectionShortSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Section
-        fields = ("id", "name", "slug")
-
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
@@ -27,7 +22,7 @@ class ProductDocumentSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(ChoicesDisplayMixin, serializers.ModelSerializer):
 
     manufacturer = ManufacturerSerializer()
-    sections = SectionShortSerializer(many=True)
+    sections = serializers.SerializerMethodField()
 
     images = ProductImageSerializer(many=True)
     documents = ProductDocumentSerializer(many=True)
@@ -40,3 +35,20 @@ class ProductDetailSerializer(ChoicesDisplayMixin, serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = "__all__"
+
+    def get_sections(self, obj):
+        result = []
+
+        for section in obj.sections.all():
+            path = section.get_path()  # ← твой метод из модели
+
+            result.append([
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "slug": s.slug,
+                }
+                for s in path
+            ])
+
+        return result

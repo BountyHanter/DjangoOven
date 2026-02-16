@@ -99,6 +99,9 @@ class ProductAdmin(admin.ModelAdmin):
                     "in_stock",
                     "free_delivery",
                     "is_popular",
+                    "is_discount",
+                    "is_new",
+                    "is_bestseller",
                 )
             },
         ),
