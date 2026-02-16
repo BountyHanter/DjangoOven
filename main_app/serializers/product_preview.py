@@ -17,6 +17,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 class ProductPreviewSerializer(serializers.ModelSerializer):
     images = ProductImageSerializer(many=True, read_only=True)
     has_video = serializers.BooleanField(read_only=True)
+    sections = serializers.SerializerMethodField()
 
     fuel_type_display = serializers.CharField(
         source="get_fuel_type_display",
@@ -28,6 +29,7 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "sections",
             "is_new",
             "is_popular",
             "is_bestseller",
@@ -39,3 +41,21 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "power_kw",
             "images",
         )
+
+    def get_sections(self, obj):
+        result = []
+
+        for section in obj.sections.all():
+            path = section.get_path()
+
+            result.append([
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "slug": s.slug,
+                }
+                for s in path
+            ])
+
+        return result
+

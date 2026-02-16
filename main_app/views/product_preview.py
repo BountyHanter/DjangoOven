@@ -20,7 +20,10 @@ class ProductCatalogAPIView(ListAPIView):
             Product.objects
             .filter(is_active=True)
             .select_related("manufacturer")      # важно
-            .prefetch_related("images", "sections")
+            .prefetch_related(
+                "images",
+                "sections__parent",
+            )
         )
 
         # --- Аннотация финальной цены ---
@@ -34,11 +37,6 @@ class ProductCatalogAPIView(ListAPIView):
 
         # --- Аннотация наличия видео ---
         queryset = queryset.annotate(
-            final_price=Case(
-                When(discount_price__isnull=False, then=F("discount_price")),
-                default=F("price"),
-                output_field=DecimalField(max_digits=12, decimal_places=2)
-            ),
             has_video=Case(
                 When(
                     Q(video_url__isnull=False) & ~Q(video_url=""),
