@@ -43,7 +43,7 @@ class Product(models.Model):
         verbose_name="Описание",
     )
 
-    video_url = models.URLField(
+    video_url = models.TextField(
         blank=True,
         null=True,
         verbose_name="Ссылка на видео-обзор",
