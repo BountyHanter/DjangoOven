@@ -1,6 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+# всегда запускаемся из директории скрипта
+cd "$(dirname "$0")"
+
+# нормализуем PATH для systemd/docker/webhook
+export PATH="$PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 PROJECT_DIR="/var/www/DjangoOven"
 HEALTH_URL="http://127.0.0.1:8000/api/v1/health/"
