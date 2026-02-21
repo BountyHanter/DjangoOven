@@ -186,6 +186,9 @@ if not DEBUG:
 # # Безопасные флаги только в проде
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [
+        r"^api/v1/health/?$",
+    ]
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
