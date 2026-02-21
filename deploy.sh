@@ -3,7 +3,7 @@
 set -e
 
 PROJECT_DIR="/var/www/DjangoOven"
-HEALTH_URL="http://127.0.0.1:8000/health/"
+HEALTH_URL="http://127.0.0.1:8000/api/v1/health/"
 CHAT_ID="-1003703551676"
 
 # ===== ВСТАВЬ СЮДА ТОКЕН =====
