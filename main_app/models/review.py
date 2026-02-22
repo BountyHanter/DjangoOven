@@ -1,29 +1,17 @@
 from django.db import models
 
+from main_app.models import Section, Product
+
 
 class Review(models.Model):
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Название"
+    )
+
     client_name = models.CharField(
         max_length=255,
         verbose_name="Клиент",
-    )
-
-    location = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Локация",
-    )
-
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Стоимость",
-    )
-
-    video_url = models.URLField(
-        blank=True,
-        verbose_name="Ссылка на видео",
     )
 
     installation_time = models.CharField(
@@ -32,9 +20,32 @@ class Review(models.Model):
         verbose_name="Время затраченное на монтаж",
     )
 
-    work_description = models.TextField(
-        verbose_name="Произведённые работы",
+    location = models.CharField(
+        max_length=255,
+        verbose_name="Локация",
     )
+
+    work_description = models.TextField(
+        verbose_name="Что сделано",
+    )
+
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Стоимость",
+    )
+
+    video_url = models.TextField(
+        verbose_name="Ссылка на видео",
+    )
+
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+        verbose_name="Продукт"
+    )
+
 
     created_at = models.DateTimeField(auto_now_add=True)
 

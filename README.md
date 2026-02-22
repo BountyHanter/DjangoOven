@@ -402,6 +402,80 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 
 ---
 
+## 4) Отзывы
+
+### 4.1) Список всех отзывов
+
+**GET** `/api/v1/catalog/reviews/`
+
+Возвращает все отзывы, отсортированные от новых к старым.
+
+### 4.2) Отзывы по товару
+
+**GET** `/api/v1/catalog/products/{product_id}/reviews/`
+
+Возвращает отзывы конкретного товара, отсортированные от новых к старым.
+
+### Что возвращается
+
+Каждый отзыв содержит:
+
+* `id`
+* `name` — название отзыва
+* `client_name` — имя клиента
+* `installation_time` — время, затраченное на монтаж
+* `location` — локация
+* `work_description` — что сделано
+* `price` — стоимость
+* `video_url` — ссылка на видео
+* `product_id` — ID товара
+* `product_name` — название товара
+* `created_at` — дата создания
+
+### Пример запроса
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
+```
+
+### Ответ (пример)
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 5,
+      "name": "Отзыв о монтаже",
+      "client_name": "Иван Петров",
+      "installation_time": "1 день",
+      "location": "Москва",
+      "work_description": "Установка печи и дымохода",
+      "price": "120000.00",
+      "video_url": "https://youtube.com/test",
+      "product_id": 15,
+      "product_name": "Тестовая печь MAX PRO",
+      "created_at": "2026-02-20T12:10:30.123456+0000"
+    },
+    {
+      "id": 4,
+      "name": "Отзыв о доставке",
+      "client_name": "Мария Иванова",
+      "installation_time": "2 дня",
+      "location": "Тверь",
+      "work_description": "Доставка и подключение",
+      "price": "90000.00",
+      "video_url": "https://youtube.com/test2",
+      "product_id": 15,
+      "product_name": "Тестовая печь MAX PRO",
+      "created_at": "2026-02-18T09:05:10.123456+0000"
+    }
+  ]
+}
+```
+
+---
+
 ## Возможные ошибки
 
 - `404 Not Found` — товар не найден
