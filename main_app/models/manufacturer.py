@@ -11,6 +11,17 @@ class Manufacturer(models.Model):
         default=True,
         verbose_name="Активен",
     )
+    logo = models.ImageField(
+        upload_to="manufacturers/",
+        verbose_name="Логотип",
+    )
+
+    priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Приоритет",
+        help_text="Чем больше значение — тем выше бренд",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Создан",

@@ -135,8 +135,8 @@ curl http://127.0.0.1:8000/health/
     }
   ],
   "manufacturers": [
-    { "id": 1, "name": "Plamen" },
-    { "id": 2, "name": "EasySteam" }
+    { "id": 1, "name": "Plamen", "logo": "/media/manufacturers/plamen.png", "priority": 10 },
+    { "id": 2, "name": "EasySteam", "logo": "/media/manufacturers/easysteam.png", "priority": 5 }
   ],
   "fuel_types": [
     { "value": "gas", "label": "Газ" },
@@ -469,6 +469,59 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
       "product_id": 15,
       "product_name": "Тестовая печь MAX PRO",
       "created_at": "2026-02-18T09:05:10.123456+0000"
+    }
+  ]
+}
+```
+
+---
+
+## 5) Производители
+
+### 5.1) Список производителей
+
+**GET** `/api/v1/catalog/manufacturers/`
+
+Возвращает активные бренды, отсортированные по алфавиту.
+
+### Query-параметры
+
+* `ordering` — сортировка:
+  * `priority` — по приоритету (больше → выше) и затем по названию
+  * если не задано — по алфавиту
+
+### Что возвращается
+
+Каждый производитель содержит:
+
+* `id`
+* `name`
+* `logo` — ссылка на логотип
+* `priority` — приоритет отображения
+
+### Пример запроса
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority"
+```
+
+### Ответ (пример)
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Plamen",
+      "logo": "http://127.0.0.1:8000/media/manufacturers/plamen.png",
+      "priority": 10
+    },
+    {
+      "id": 2,
+      "name": "EasySteam",
+      "logo": "http://127.0.0.1:8000/media/manufacturers/easysteam.png",
+      "priority": 5
     }
   ]
 }
