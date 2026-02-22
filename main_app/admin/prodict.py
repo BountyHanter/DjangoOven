@@ -5,7 +5,6 @@ from main_app.models.manufacturer import Manufacturer
 from main_app.models.product import ProductImage, ProductDocument, Product
 from main_app.models.section import Section
 
-admin.site.register(Manufacturer)
 admin.site.register(Section)
 
 class ProductImageInline(admin.TabularInline):
