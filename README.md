@@ -402,15 +402,101 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 
 ---
 
-## 4) Отзывы
+## 4) Портфолио
 
-### 4.1) Список всех отзывов
+### 4.1) Список портфолио
+
+**GET** `/api/v1/catalog/portfolio/`
+
+Возвращает портфолио с возможностью фильтрации по товару, разделу и признаку `main`.
+
+### 4.2) Портфолио по товару
+
+**GET** `/api/v1/catalog/products/{product_id}/portfolio/`
+
+Возвращает портфолио конкретного товара.
+
+### Query-параметры
+
+* `product` — фильтр по товару (ID)
+* `section` — фильтр по разделу (ID)
+* `main` — только для главной (`main=true`)
+
+### Что возвращается
+
+Каждое портфолио содержит:
+
+* `id`
+* `title` — название
+* `main` — выводить на главной
+* `duration` — срок работ (в днях)
+* `date` — дата работ
+* `object_type` — тип объекта
+* `price` — стоимость
+* `video_link` — ссылка на видео
+* `picture` — фото
+* `type_work` — тип работ
+* `product_id` — ID товара
+* `product_name` — название товара
+* `created_at` — дата создания
+
+### Пример запроса
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true"
+```
+
+### Ответ (пример)
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 10,
+      "title": "Монтаж печи",
+      "main": true,
+      "duration": 2,
+      "date": "2026-02-10",
+      "object_type": "Баня",
+      "price": 120000,
+      "video_link": "https://youtube.com/test",
+      "picture": "http://127.0.0.1:8000/media/portfolio_image/p1.jpg",
+      "type_work": "Монтаж и подключение",
+      "product_id": 15,
+      "product_name": "Тестовая печь MAX PRO",
+      "created_at": "2026-02-20T12:10:30.123456+0000"
+    },
+    {
+      "id": 9,
+      "title": "Установка дымохода",
+      "main": true,
+      "duration": 1,
+      "date": "2026-02-08",
+      "object_type": "Дом",
+      "price": 80000,
+      "video_link": "",
+      "picture": "http://127.0.0.1:8000/media/portfolio_image/p2.jpg",
+      "type_work": "Монтаж",
+      "product_id": 15,
+      "product_name": "Тестовая печь MAX PRO",
+      "created_at": "2026-02-18T09:05:10.123456+0000"
+    }
+  ]
+}
+```
+
+---
+
+## 5) Отзывы
+
+### 5.1) Список всех отзывов
 
 **GET** `/api/v1/catalog/reviews/`
 
 Возвращает все отзывы, отсортированные от новых к старым.
 
-### 4.2) Отзывы по товару
+### 5.2) Отзывы по товару
 
 **GET** `/api/v1/catalog/products/{product_id}/reviews/`
 
@@ -476,9 +562,9 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
 
 ---
 
-## 5) Производители
+## 6) Производители
 
-### 5.1) Список производителей
+### 6.1) Список производителей
 
 **GET** `/api/v1/catalog/manufacturers/`
 
