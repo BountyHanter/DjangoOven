@@ -2,6 +2,7 @@
 
 import django.db.models.deletion
 from django.db import migrations, models
+from django.utils.text import slugify
 
 
 class Migration(migrations.Migration):
@@ -9,6 +10,32 @@ class Migration(migrations.Migration):
     dependencies = [
         ('main_app', '0016_remove_catalogportfolioproductimage_portfolio_and_more'),
     ]
+
+    def _fill_manufacturer_slugs(apps, schema_editor):
+        Manufacturer = apps.get_model("main_app", "Manufacturer")
+
+        used = set(
+            s for s in Manufacturer.objects.exclude(slug__isnull=True)
+            .exclude(slug="")
+            .values_list("slug", flat=True)
+        )
+
+        for m in Manufacturer.objects.all().order_by("id"):
+            current = (m.slug or "").strip()
+            if current:
+                base = current
+            else:
+                base = slugify(m.name) or f"manufacturer-{m.id}"
+
+            slug = base
+            i = 1
+            while slug in used:
+                i += 1
+                slug = f"{base}-{i}"
+
+            m.slug = slug
+            m.save(update_fields=["slug"])
+            used.add(slug)
 
     operations = [
         migrations.AddField(
@@ -29,13 +56,18 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='manufacturer',
             name='slug',
-            field=models.CharField(default='1', max_length=255, unique=True, verbose_name='ЧПУ (slug)'),
-            preserve_default=False,
+            field=models.CharField(blank=True, max_length=255, null=True, verbose_name='ЧПУ (slug)'),
         ),
         migrations.AddField(
             model_name='manufacturer',
             name='video',
             field=models.TextField(blank=True, verbose_name='Видео'),
+        ),
+        migrations.RunPython(_fill_manufacturer_slugs, reverse_code=migrations.RunPython.noop),
+        migrations.AlterField(
+            model_name='manufacturer',
+            name='slug',
+            field=models.CharField(max_length=255, unique=True, verbose_name='ЧПУ (slug)'),
         ),
         migrations.CreateModel(
             name='ManufacturerImage',
