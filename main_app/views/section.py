@@ -4,8 +4,8 @@ from rest_framework.views import APIView
 
 from main_app.models import Manufacturer, FUEL_TYPE_CHOICES
 from main_app.models.section import Section
+from main_app.serializers.manufacturer import ManufacturerPreviewSerializer
 from main_app.serializers.section import SectionTreeSerializer
-from main_app.serializers.manufacturer import ManufacturerSerializer
 
 
 class CatalogFiltersAPIView(APIView):
@@ -33,6 +33,6 @@ class CatalogFiltersAPIView(APIView):
 
         return Response({
             "sections": SectionTreeSerializer(sections, many=True).data,
-            "manufacturers": ManufacturerSerializer(manufacturers, many=True).data,
+            "manufacturers": ManufacturerPreviewSerializer(manufacturers, many=True).data,
             "fuel_types": fuel_types,
         })

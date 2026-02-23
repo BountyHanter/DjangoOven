@@ -20,6 +20,7 @@ def test_product_catalog_api():
     manufacturer = Manufacturer.objects.create(
         name="Harvia",
         logo="manufacturers/test.jpg",
+        slug="harvia",
     )
     parent_section = Section.objects.create(
         name="Основные печи",
@@ -113,8 +114,8 @@ def test_filter_products_by_multiple_sections(client):
 
 @pytest.mark.django_db
 def test_filter_products_by_multiple_manufacturers(client):
-    manufacturer1 = Manufacturer.objects.create(name="Brand1", logo="manufacturers/test1.jpg",)
-    manufacturer2 = Manufacturer.objects.create(name="Brand2", logo="manufacturers/test1.jpg",)
+    manufacturer1 = Manufacturer.objects.create(name="Brand1", logo="manufacturers/test1.jpg", slug="manufacturer1")
+    manufacturer2 = Manufacturer.objects.create(name="Brand2", logo="manufacturers/test1.jpg", slug="manufacturer2")
 
     Product.objects.create(
         name="Печь1",

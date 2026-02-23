@@ -8,17 +8,27 @@ from main_app.models import Manufacturer
 
 
 @pytest.mark.django_db
-def test_get_manufacturers_default_alphabetical_order():
+def test_get_manufacturers_list_default_order():
     """
-    По умолчанию бренды должны возвращаться
-    в алфавитном порядке.
+    Проверяем:
+    - список брендов отдаётся
+    - по умолчанию сортировка по имени (alphabetical)
     """
 
     client = APIClient()
 
-    Manufacturer.objects.create(name="Zota", logo="manufacturers/z.jpg")
-    Manufacturer.objects.create(name="Harvia", logo="manufacturers/h.jpg")
-    Manufacturer.objects.create(name="Aito", logo="manufacturers/a.jpg")
+    Manufacturer.objects.create(
+        name="Zota",
+        logo="manufacturers/z.jpg",
+        is_active=True,
+        slug="zota",
+    )
+    Manufacturer.objects.create(
+        name="Harvia",
+        logo="manufacturers/h.jpg",
+        is_active=True,
+        slug="harvia",
+    )
 
     url = reverse("catalog-manufacturers")
     response = client.get(url)
@@ -27,16 +37,15 @@ def test_get_manufacturers_default_alphabetical_order():
 
     results = response.json()["results"]
 
-    names = [item["name"] for item in results]
-
-    assert names == ["Aito", "Harvia", "Zota"]
+    # alphabetical order
+    assert results[0]["name"] == "Harvia"
+    assert results[1]["name"] == "Zota"
 
 
 @pytest.mark.django_db
-def test_get_manufacturers_order_by_priority():
+def test_get_manufacturers_list_order_by_priority():
     """
-    Проверяем сортировку по приоритету.
-    Чем выше priority — тем выше бренд.
+    Проверяем сортировку по priority.
     """
 
     client = APIClient()
@@ -44,37 +53,44 @@ def test_get_manufacturers_order_by_priority():
     Manufacturer.objects.create(
         name="Brand A",
         logo="manufacturers/a.jpg",
-        priority=10,
+        priority=100,
+        is_active=True,
+        slug="brand-a",
     )
 
     Manufacturer.objects.create(
         name="Brand B",
         logo="manufacturers/b.jpg",
-        priority=100,
+        priority=300,
+        is_active=True,
+        slug="brand-b",
     )
 
     Manufacturer.objects.create(
         name="Brand C",
         logo="manufacturers/c.jpg",
-        priority=50,
+        priority=200,
+        is_active=True,
+        slug="brand-c",
     )
 
     url = reverse("catalog-manufacturers")
-    response = client.get(url, {"ordering": "priority"})
+    response = client.get(f"{url}?ordering=priority")
 
     assert response.status_code == 200
 
     results = response.json()["results"]
-    names = [item["name"] for item in results]
 
-    assert names == ["Brand B", "Brand C", "Brand A"]
+    assert results[0]["name"] == "Brand B"
+    assert results[1]["name"] == "Brand C"
+    assert results[2]["name"] == "Brand A"
 
 
 @pytest.mark.django_db
-def test_priority_same_then_alphabetical():
+def test_get_manufacturers_same_priority_fallback_to_name():
     """
-    Если приоритет одинаковый —
-    сортировка должна идти по алфавиту.
+    Если priority одинаковый —
+    проверяем fallback сортировку по имени.
     """
 
     client = APIClient()
@@ -82,28 +98,83 @@ def test_priority_same_then_alphabetical():
     Manufacturer.objects.create(
         name="Zeta",
         logo="manufacturers/z.jpg",
-        priority=50,
+        priority=100,
+        is_active=True,
+        slug="zeta",
     )
 
     Manufacturer.objects.create(
         name="Alpha",
         logo="manufacturers/a.jpg",
-        priority=50,
-    )
-
-    Manufacturer.objects.create(
-        name="Beta",
-        logo="manufacturers/b.jpg",
-        priority=50,
+        priority=100,
+        is_active=True,
+        slug="alpha",
     )
 
     url = reverse("catalog-manufacturers")
-    response = client.get(url, {"ordering": "priority"})
-    print(json.dumps(response.json(), indent=2, ensure_ascii=False))
+    response = client.get(f"{url}?ordering=priority")
 
     assert response.status_code == 200
 
     results = response.json()["results"]
-    names = [item["name"] for item in results]
 
-    assert names == ["Alpha", "Beta", "Zeta"]
+    assert results[0]["name"] == "Alpha"
+    assert results[1]["name"] == "Zeta"
+
+
+@pytest.mark.django_db
+def test_get_manufacturer_detail():
+    """
+    Проверяем получение конкретного бренда по id.
+    """
+
+    client = APIClient()
+
+    manufacturer = Manufacturer.objects.create(
+        name="Harvia",
+        slug="harvia",
+        logo="manufacturers/h.jpg",
+        description="Описание бренда",
+        is_active=True,
+    )
+
+    url = reverse(
+        "catalog-manufacturer-detail",
+        kwargs={"id": manufacturer.id},
+    )
+
+    response = client.get(url)
+    print(json.dumps(response.json(), indent=4, ensure_ascii=False))
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == manufacturer.id
+    assert data["name"] == "Harvia"
+    assert "description" in data
+
+
+@pytest.mark.django_db
+def test_inactive_manufacturer_not_available():
+    """
+    Неактивный бренд не должен быть доступен через detail API.
+    """
+
+    client = APIClient()
+
+    manufacturer = Manufacturer.objects.create(
+        name="Hidden Brand",
+        slug="hidden",
+        logo="manufacturers/h.jpg",
+        is_active=False,
+    )
+
+    url = reverse(
+        "catalog-manufacturer-detail",
+        kwargs={"id": manufacturer.id},
+    )
+
+    response = client.get(url)
+
+    assert response.status_code == 404

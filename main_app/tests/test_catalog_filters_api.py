@@ -28,8 +28,17 @@ def test_catalog_filters_api():
     )
 
     # --- manufacturers ---
-    Manufacturer.objects.create(name="Plamen")
-    Manufacturer.objects.create(name="EasySteam")
+    Manufacturer.objects.create(
+        name="Plamen",
+        slug="plamen",
+        is_active=True,
+    )
+
+    Manufacturer.objects.create(
+        name="EasySteam",
+        slug="easysteam",
+        is_active=True,
+    )
 
     url = reverse("catalog-filters")
     response = client.get(url)

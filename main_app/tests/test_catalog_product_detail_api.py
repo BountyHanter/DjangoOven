@@ -21,6 +21,7 @@ def test_product_detail_api_full():
     manufacturer = Manufacturer.objects.create(
         name="Harvia",
         logo="manufacturers/test.jpg",
+        slug="harvia",
     )
     # ---------------- SECTION LEVEL 1 ----------------
     parent_section = Section.objects.create(

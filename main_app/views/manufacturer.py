@@ -1,13 +1,13 @@
-from rest_framework.generics import ListAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
 
 from main_app.models import Manufacturer
-from main_app.serializers.manufacturer import ManufacturerSerializer
+from main_app.serializers.manufacturer import ManufacturerPreviewSerializer, ManufacturerDetailSerializer
 
 
-class ManufacturerListView(ListAPIView):
+class ManufacturerPreviewListView(ListAPIView):
     permission_classes = [AllowAny]
-    serializer_class = ManufacturerSerializer
+    serializer_class = ManufacturerPreviewSerializer
 
     def get_queryset(self):
         queryset = Manufacturer.objects.filter(is_active=True)
@@ -20,3 +20,10 @@ class ManufacturerListView(ListAPIView):
 
         # сортировка по алфавиту (по умолчанию)
         return queryset.order_by("name")
+
+
+class ManufacturerDetailAPIView(RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = ManufacturerDetailSerializer
+    queryset = Manufacturer.objects.filter(is_active=True)
+    lookup_field = "id"

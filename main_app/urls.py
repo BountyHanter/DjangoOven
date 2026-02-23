@@ -1,6 +1,6 @@
 from django.urls import path, include
 
-from main_app.views.manufacturer import ManufacturerListView
+from main_app.views.manufacturer import ManufacturerPreviewListView, ManufacturerDetailAPIView
 from main_app.views.portfolio import PortfolioListAPIView
 from main_app.views.product_detail import ProductDetailAPIView
 from main_app.views.product_preview import ProductCatalogAPIView
@@ -23,7 +23,8 @@ catalog_patterns = [
     path("products/<int:product_id>/reviews/", ReviewListView.as_view(), name="product-reviews"),
 
     # бренды
-    path("manufacturers/", ManufacturerListView.as_view(), name="catalog-manufacturers"),
+    path("manufacturers/", ManufacturerPreviewListView.as_view(), name="catalog-manufacturers"),
+    path("manufacturers/<int:id>/", ManufacturerDetailAPIView.as_view(), name="catalog-manufacturer-detail"),
 ]
 
 urlpatterns = [

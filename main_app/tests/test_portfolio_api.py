@@ -20,7 +20,7 @@ def test_get_portfolio_by_product():
 
     client = APIClient()
 
-    manufacturer = Manufacturer.objects.create(name="Test")
+    manufacturer = Manufacturer.objects.create(name="Test", slug="test")
 
     product1 = Product.objects.create(
         name="Товар 1",
@@ -63,7 +63,7 @@ def test_get_portfolio_by_section():
 
     client = APIClient()
 
-    manufacturer = Manufacturer.objects.create(name="Test")
+    manufacturer = Manufacturer.objects.create(name="Test", slug="test")
 
     section1 = Section.objects.create(name="Категория 1", slug="cat-1")
     section2 = Section.objects.create(name="Категория 2", slug="cat-2")

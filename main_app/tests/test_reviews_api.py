@@ -21,7 +21,7 @@ def test_get_reviews_by_product():
     client = APIClient()
 
     # ---------- производитель ----------
-    manufacturer = Manufacturer.objects.create(name="Тестовый бренд")
+    manufacturer = Manufacturer.objects.create(name="Тестовый бренд", slug="test")
 
     # ---------- товары ----------
     product1 = Product.objects.create(
@@ -101,7 +101,7 @@ def test_get_all_reviews_ordered_newest_first():
 
     client = APIClient()
 
-    manufacturer = Manufacturer.objects.create(name="Тестовый бренд")
+    manufacturer = Manufacturer.objects.create(name="Тестовый бренд", slug="test")
 
     product = Product.objects.create(
         name="Товар",

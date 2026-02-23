@@ -135,8 +135,8 @@ curl http://127.0.0.1:8000/health/
     }
   ],
   "manufacturers": [
-    { "id": 1, "name": "Plamen", "logo": "/media/manufacturers/plamen.png", "priority": 10 },
-    { "id": 2, "name": "EasySteam", "logo": "/media/manufacturers/easysteam.png", "priority": 5 }
+    { "id": 1, "name": "Plamen", "slug": "plamen", "logo": "/media/manufacturers/plamen.png", "priority": 10 },
+    { "id": 2, "name": "EasySteam", "slug": "easysteam", "logo": "/media/manufacturers/easysteam.png", "priority": 5 }
   ],
   "fuel_types": [
     { "value": "gas", "label": "Газ" },
@@ -582,6 +582,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
 
 * `id`
 * `name`
+* `slug`
 * `logo` — ссылка на логотип
 * `priority` — приоритет отображения
 
@@ -600,14 +601,69 @@ curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority"
     {
       "id": 1,
       "name": "Plamen",
+      "slug": "plamen",
       "logo": "http://127.0.0.1:8000/media/manufacturers/plamen.png",
       "priority": 10
     },
     {
       "id": 2,
       "name": "EasySteam",
+      "slug": "easysteam",
       "logo": "http://127.0.0.1:8000/media/manufacturers/easysteam.png",
       "priority": 5
+    }
+  ]
+}
+```
+
+---
+
+### 6.2) Детальная карточка производителя
+
+**GET** `/api/v1/catalog/manufacturers/{id}/`
+
+Возвращает данные производителя и галерею изображений.
+
+### Что возвращается
+
+* `id`
+* `name`
+* `slug`
+* `logo`
+* `priority`
+* `keywords` — SEO ключевые слова
+* `short_description` — краткое описание
+* `description` — полное описание
+* `video` — видео (строка/URL)
+* `images` — массив изображений производителя `{id, image, ordering}`
+
+### Пример запроса
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/3/"
+```
+
+### Ответ (пример)
+```json
+{
+  "id": 3,
+  "name": "Harvia",
+  "slug": "harvia",
+  "logo": "http://127.0.0.1:8000/media/manufacturers/harvia.png",
+  "priority": 100,
+  "keywords": "печи, баня, harvia",
+  "short_description": "Финские печи для бани",
+  "description": "Полное описание бренда",
+  "video": "https://youtube.com/test",
+  "images": [
+    {
+      "id": 10,
+      "image": "http://127.0.0.1:8000/media/manufacturer_images/harvia_1.jpg",
+      "ordering": 0
+    },
+    {
+      "id": 11,
+      "image": "http://127.0.0.1:8000/media/manufacturer_images/harvia_2.jpg",
+      "ordering": 1
     }
   ]
 }
