@@ -39,6 +39,14 @@ class Review(models.Model):
         verbose_name="Ссылка на видео",
     )
 
+    preview_image = models.ImageField(
+        upload_to="reviews/video_preview/",
+        null=True,
+        blank=True,
+        verbose_name="Превью видео",
+        help_text="Картинка, отображаемая как превью видео"
+    )
+
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,

@@ -25,6 +25,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             "work_description",
             "price",
             "video_url",
+            "preview_image",
             "product_id",
             "product_name",
             "created_at",

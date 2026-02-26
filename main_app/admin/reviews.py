@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils.html import format_html
 
 from main_app.models import Review
 
@@ -6,46 +7,62 @@ from main_app.models import Review
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
 
-    # список в таблице
+    # --- превью картинки ---
+    def preview_image_tag(self, obj):
+        if obj.preview_image and hasattr(obj.preview_image, "url"):
+            return format_html(
+                '<img src="{}" style="max-height:120px;border-radius:6px;" />',
+                obj.preview_image.url,
+            )
+        return "Нет изображения"
+
+    preview_image_tag.short_description = "Превью видео"
+
+    # --- список ---
     list_display = (
-        "name",
         "client_name",
         "product",
         "location",
         "price",
+        "preview_image_tag",
         "created_at",
     )
 
-    # фильтры справа
+    list_select_related = ("product",)
+
+    # --- readonly ---
+    readonly_fields = (
+        "preview_image_tag",
+        "created_at",
+    )
+
+    # --- порядок полей ---
+    fields = (
+        "name",
+        "client_name",
+        "product",
+        "installation_time",
+        "location",
+        "work_description",
+        "price",
+        "video_url",
+        "preview_image",
+        "preview_image_tag",
+        "created_at",
+    )
+
+    # --- фильтры ---
     list_filter = (
         "product",
         "created_at",
     )
 
-    # поиск
+    # --- поиск ---
     search_fields = (
-        "name",
         "client_name",
+        "name",
         "product__name",
         "location",
     )
 
-    # порядок полей в форме
-    fields = (
-        "name",
-        "client_name",
-        "product",
-        "location",
-        "installation_time",
-        "price",
-        "video_url",
-        "work_description",
-        "created_at",
-    )
-
-    # readonly
-    readonly_fields = (
-        "created_at",
-    )
-
-    date_hierarchy = "created_at"
+    ordering = ("-created_at",)

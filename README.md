@@ -537,6 +537,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true"
 * `work_description` — что сделано
 * `price` — стоимость
 * `video_url` — ссылка на видео
+* `preview_image` — превью для видео (может быть `null`)
 * `product_id` — ID товара
 * `product_name` — название товара
 * `created_at` — дата создания
@@ -562,6 +563,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
       "work_description": "Установка печи и дымохода",
       "price": "120000.00",
       "video_url": "https://youtube.com/test",
+      "preview_image": "http://127.0.0.1:8000/media/reviews/video_preview/review-5.jpg",
       "product_id": 15,
       "product_name": "Тестовая печь MAX PRO",
       "created_at": "2026-02-20T12:10:30.123456+0000"
@@ -575,6 +577,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
       "work_description": "Доставка и подключение",
       "price": "90000.00",
       "video_url": "https://youtube.com/test2",
+      "preview_image": null,
       "product_id": 15,
       "product_name": "Тестовая печь MAX PRO",
       "created_at": "2026-02-18T09:05:10.123456+0000"
