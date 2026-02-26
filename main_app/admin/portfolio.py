@@ -1,40 +1,62 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from main_app.models import Portfolio
+from main_app.models import Portfolio, PortfolioImage
 
+class PortfolioImageInline(admin.TabularInline):
+    model = PortfolioImage
+    extra = 1
+    fields = ("image", "order", "image_preview")
+    readonly_fields = ("image_preview",)
+    ordering = ("order", "id")
+
+    def image_preview(self, obj):
+        if obj.image and hasattr(obj.image, "url"):
+            return format_html(
+                '<img src="{}" style="max-height:100px;border-radius:6px;" />',
+                obj.image.url,
+            )
+        return "Нет изображения"
+
+    image_preview.short_description = "Превью"
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
 
-    # --- превью изображения ---
-    def picture_preview(self, obj):
-        if obj.picture and hasattr(obj.picture, "url"):
+    # ----- inline галерея -----
+    inlines = [PortfolioImageInline]
+
+    # ----- превью обложки (первая фотка) -----
+    def preview(self, obj):
+        image = obj.images.first()
+        if image and image.image:
             return format_html(
                 '<img src="{}" style="max-height:120px;border-radius:6px;" />',
-                obj.picture.url,
+                image.image.url,
             )
         return "Нет изображения"
 
-    picture_preview.short_description = "Превью"
+    preview.short_description = "Превью"
 
-    # --- список ---
+    # ----- список -----
     list_display = (
         "title",
         "product",
         "main",
         "price",
-        "picture_preview",
+        "preview",
         "created_at",
     )
 
-    # --- readonly ---
+    list_display_links = ("title",)
+
+    # ----- readonly -----
     readonly_fields = (
-        "picture_preview",
+        "preview",
         "created_at",
     )
 
-    # --- порядок полей в форме ---
+    # ----- порядок полей формы -----
     fields = (
         "title",
         "product",
@@ -44,18 +66,26 @@ class PortfolioAdmin(admin.ModelAdmin):
         "object_type",
         "price",
         "video_link",
-        "picture",
-        "picture_preview",
+        "preview",
         "type_work",
         "created_at",
     )
 
+    # ----- фильтры -----
     list_filter = (
         "main",
         "product",
+        "created_at",
     )
 
+    # ----- поиск -----
     search_fields = (
         "title",
         "product__name",
     )
+
+    # ----- сортировка -----
+    ordering = ("-created_at",)
+
+    # ----- оптимизация запросов -----
+    list_select_related = ("product",)

@@ -106,6 +106,17 @@ class Section(models.Model):
 
         return list(reversed(path))
 
+    def get_descendants(self, include_self=True):
+        nodes = [self] if include_self else []
+
+        for child in self.children.all():
+            nodes.extend(child.get_descendants(include_self=True))
+
+        return nodes
+
+    def get_descendants_ids(self, include_self=True):
+        return [s.id for s in self.get_descendants(include_self)]
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)

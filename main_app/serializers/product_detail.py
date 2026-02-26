@@ -40,7 +40,7 @@ class ProductDetailSerializer(ChoicesDisplayMixin, serializers.ModelSerializer):
         result = []
 
         for section in obj.sections.all():
-            path = section.get_path()  # ← твой метод из модели
+            path = section.get_path()
 
             result.append([
                 {

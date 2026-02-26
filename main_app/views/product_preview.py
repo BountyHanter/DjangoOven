@@ -19,7 +19,7 @@ class ProductCatalogAPIView(ListAPIView):
         queryset = (
             Product.objects
             .filter(is_active=True)
-            .select_related("manufacturer")      # важно
+            .select_related("manufacturer")
             .prefetch_related(
                 "images",
                 "sections__parent",
@@ -65,12 +65,15 @@ class ProductCatalogAPIView(ListAPIView):
                 is_active=True
             )
 
-            all_sections = []
+            all_section_ids = []
 
+            # берём раздел + всех его потомков
             for section in sections:
-                all_sections.extend(get_section_with_children(section))
+                all_section_ids.extend(section.get_descendants_ids())
 
-            queryset = queryset.filter(sections__in=all_sections).distinct()
+            queryset = queryset.filter(
+                sections__id__in=all_section_ids
+            ).distinct()
 
         # --- Фильтр по производителям ---
         manufacturer_ids = self.request.query_params.getlist("manufacturer")

@@ -434,11 +434,17 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 * `object_type` — тип объекта
 * `price` — стоимость
 * `video_link` — ссылка на видео
-* `picture` — фото
+* `images` — список фото
 * `type_work` — тип работ
 * `product_id` — ID товара
 * `product_name` — название товара
 * `created_at` — дата создания
+
+Каждое изображение в `images` содержит:
+
+* `id`
+* `image` — ссылка на изображение
+* `order` — порядок отображения
 
 ### Пример запроса
 ```bash
@@ -461,7 +467,18 @@ curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true"
       "object_type": "Баня",
       "price": 120000,
       "video_link": "https://youtube.com/test",
-      "picture": "http://127.0.0.1:8000/media/portfolio_image/p1.jpg",
+      "images": [
+        {
+          "id": 101,
+          "image": "http://127.0.0.1:8000/media/portfolio_image/p1.jpg",
+          "order": 0
+        },
+        {
+          "id": 102,
+          "image": "http://127.0.0.1:8000/media/portfolio_image/p1-2.jpg",
+          "order": 1
+        }
+      ],
       "type_work": "Монтаж и подключение",
       "product_id": 15,
       "product_name": "Тестовая печь MAX PRO",
@@ -476,7 +493,13 @@ curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true"
       "object_type": "Дом",
       "price": 80000,
       "video_link": "",
-      "picture": "http://127.0.0.1:8000/media/portfolio_image/p2.jpg",
+      "images": [
+        {
+          "id": 103,
+          "image": "http://127.0.0.1:8000/media/portfolio_image/p2.jpg",
+          "order": 0
+        }
+      ],
       "type_work": "Монтаж",
       "product_id": 15,
       "product_name": "Тестовая печь MAX PRO",

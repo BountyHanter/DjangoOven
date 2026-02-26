@@ -42,11 +42,6 @@ class Portfolio(models.Model):
         verbose_name="Ссылка на видео"
     )
 
-    picture = models.ImageField(
-        upload_to="portfolio_image/",
-        verbose_name="Фото"
-    )
-
     type_work = models.TextField(
         blank=True,
         null=True,
@@ -69,3 +64,32 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class PortfolioImage(models.Model):
+    portfolio = models.ForeignKey(
+        "Portfolio",
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="Портфолио"
+    )
+
+    image = models.ImageField(
+        upload_to="portfolio_image/",
+        verbose_name="Фото"
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Фото портфолио"
+        verbose_name_plural = "Фото портфолио"
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.portfolio.title} — {self.id}"
