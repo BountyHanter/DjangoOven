@@ -84,12 +84,6 @@ class ProductCatalogAPIView(ListAPIView):
                 manufacturer__is_active=True
             )
 
-        # --- Тип топлива ---
-        fuel_types = self.request.query_params.getlist("fuel_type")
-
-        if fuel_types:
-            queryset = queryset.filter(fuel_type__in=fuel_types)
-
         # --- Цена ---
         price_from = self.request.query_params.get("price_from")
         price_to = self.request.query_params.get("price_to")
@@ -99,6 +93,65 @@ class ProductCatalogAPIView(ListAPIView):
 
         if price_to:
             queryset = queryset.filter(final_price__lte=price_to)
+
+        # --- Скидка ---
+        discount = self.request.query_params.get("discount")
+
+        if discount:
+            queryset = queryset.filter(discount_price__isnull=False)
+
+        # --- Авто-фильтры по полям Product (игнорируем неизвестные параметры) ---
+        def _parse_bool(val: str):
+            v = (val or "").strip().lower()
+            if v in {"1", "true", "t", "yes", "y", "on"}:
+                return True
+            if v in {"0", "false", "f", "no", "n", "off"}:
+                return False
+            return None
+
+        product_fields = {
+            f.name: f
+            for f in Product._meta.get_fields()
+            if getattr(f, "concrete", False) and not getattr(f, "is_relation", False)
+        }
+
+        ignored_params = {
+            "search",
+            "ordering",
+            "section",
+            "manufacturer",
+            "price_from",
+            "price_to",
+            "discount",
+            "page",
+            "page_size",
+        }
+
+        for param in self.request.query_params:
+            if param in ignored_params:
+                continue
+
+            field = product_fields.get(param)
+            if not field:
+                continue
+
+            values = self.request.query_params.getlist(param)
+            if not values:
+                continue
+
+            # для boolean аккуратно приводим значения
+            if isinstance(field, BooleanField):
+                parsed = []
+                for v in values:
+                    b = _parse_bool(v)
+                    if b is not None:
+                        parsed.append(b)
+
+                if parsed:
+                    queryset = queryset.filter(**{f"{param}__in": parsed})
+
+            else:
+                queryset = queryset.filter(**{f"{param}__in": values})
 
         # --- Сортировка ---
         ordering = self.request.query_params.get("ordering")
@@ -113,6 +166,16 @@ class ProductCatalogAPIView(ListAPIView):
             queryset = queryset.order_by("final_price", "-created_at")
 
         else:
-            queryset = queryset.order_by("-created_at")
+            # Авто-сортировка по любому полю Product: ordering=field или ordering=-field
+            allowed_order_fields = set(product_fields.keys()) | {"final_price", "has_video"}
+
+            if ordering:
+                field_name = ordering[1:] if ordering.startswith("-") else ordering
+                if field_name in allowed_order_fields:
+                    queryset = queryset.order_by(ordering, "-created_at")
+                else:
+                    queryset = queryset.order_by("-created_at")
+            else:
+                queryset = queryset.order_by("-created_at")
 
         return queryset

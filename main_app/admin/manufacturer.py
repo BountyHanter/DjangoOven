@@ -62,7 +62,10 @@ class ManufacturerAdmin(admin.ModelAdmin):
         "logo",
         "logo_preview",
 
-        "keywords",
+        "seo_title",
+        "seo_description",
+        "seo_keywords",
+
         "short_description",
         "description",
         "video",

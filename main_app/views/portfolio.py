@@ -25,6 +25,7 @@ class PortfolioListAPIView(ListAPIView):
 
         section_id = self.request.query_params.get("section")
         main = self.request.query_params.get("main")
+        manufacturer_ids = self.request.query_params.get("manufacturer")
 
         if product_id:
             queryset = queryset.filter(product_id=product_id)
@@ -36,6 +37,11 @@ class PortfolioListAPIView(ListAPIView):
 
             queryset = queryset.filter(
                 product__sections__id__in=section_ids
+            )
+
+        if manufacturer_ids:
+            queryset = queryset.filter(
+                product__manufacturer_id__in=manufacturer_ids
             )
 
         if main == "true":

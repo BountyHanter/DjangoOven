@@ -25,7 +25,18 @@ class Manufacturer(models.Model):
     )
 
     # --- SEO / контент ---
-    keywords = models.CharField(
+    seo_title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Название страницы",
+    )
+
+    seo_description = models.TextField(
+        blank=True,
+        verbose_name="Описание страницы",
+    )
+
+    seo_keywords = models.CharField(
         max_length=255,
         blank=True,
         verbose_name="Ключевые слова",

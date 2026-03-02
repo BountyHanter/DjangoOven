@@ -10,7 +10,7 @@ class Section(models.Model):
 
     slug = models.SlugField(
         max_length=255,
-        verbose_name="Slug",
+        verbose_name="ЧПУ(Slug)",
         help_text="Используется в URL",
     )
 
@@ -21,6 +21,13 @@ class Section(models.Model):
         related_name="children",
         on_delete=models.CASCADE,
         verbose_name="Родительский раздел",
+    )
+
+    image = models.ImageField(
+        upload_to="sections/images/",
+        null=True,
+        blank=True,
+        verbose_name="Изображение раздела",
     )
 
     menu_name = models.CharField(

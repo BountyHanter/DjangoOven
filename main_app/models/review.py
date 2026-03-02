@@ -29,9 +29,7 @@ class Review(models.Model):
         verbose_name="Что сделано",
     )
 
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
+    price = models.IntegerField(
         verbose_name="Стоимость",
     )
 

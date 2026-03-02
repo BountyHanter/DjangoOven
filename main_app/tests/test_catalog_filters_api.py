@@ -66,8 +66,10 @@ def test_catalog_filters_api():
     assert "EasySteam" in manufacturer_names
 
     # --- fuel type проверки ---
-    assert "fuel_types" in data
-    assert len(data["fuel_types"]) > 0
+    assert "filters" in data
+    assert "fuel_type" in data["filters"]
 
-    values = [f["value"] for f in data["fuel_types"]]
+    assert len(data["filters"]["fuel_type"]) > 0
+
+    values = [f["value"] for f in data["filters"]["fuel_type"]]
     assert "gas" in values

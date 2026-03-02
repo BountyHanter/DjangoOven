@@ -1,10 +1,26 @@
 from django.db import models
 from slugify import slugify
 
-from main_app.models.choices import MATERIAL_CHOICES, FIREBOX_MATERIAL_CHOICES, STONE_MATERIAL_CHOICES, \
-    DOOR_TYPE_CHOICES, DOOR_MECHANISM_CHOICES, FIRE_VIEW_CHOICES, GLASS_COUNT_CHOICES, FUEL_TYPE_CHOICES, \
-    TANK_TYPE_CHOICES, FIREBOX_TYPE_CHOICES, STONE_TYPE_CHOICES, WATER_HEATING_CHOICES, PLACEMENT_CHOICES, \
-    FACING_TYPE_CHOICES
+from main_app.models.choices import (
+    PURPOSE_CHOICES,
+    FUEL_TYPE_CHOICES,
+    HEATED_VOLUME_CHOICES,
+    STEAM_ROOM_VOLUME_CHOICES,
+    POWER_KW_CHOICES,
+    FIREBOX_MATERIAL_CHOICES,
+    FIREBOX_TYPE_CHOICES,
+    INSTALLATION_TYPE_CHOICES,
+    FIREBOX_ORIENTATION_CHOICES,
+    COMBUSTION_TYPE_CHOICES,
+    GLASS_COUNT_CHOICES,
+    FIRE_VIEW_CHOICES,
+    CLADDING_MATERIAL_CHOICES,
+    HEATER_TYPE_CHOICES,
+    DOOR_MECHANISM_CHOICES,
+    CHIMNEY_DIAMETER_CHOICES,
+    STONE_MATERIAL_CHOICES,
+    TANK_TYPE_CHOICES, CHIMNEY_CONNECTION_CHOICES,
+)
 from main_app.models.manufacturer import Manufacturer
 from main_app.models.section import Section
 
@@ -33,7 +49,6 @@ class Product(models.Model):
 
     sections = models.ManyToManyField(
         Section,
-        blank=True,
         verbose_name="Разделы",
     )
 
@@ -43,22 +58,26 @@ class Product(models.Model):
         verbose_name="Описание",
     )
 
-    video_url = models.TextField(
+    video_url = models.CharField(
+        max_length=512,
         blank=True,
         null=True,
         verbose_name="Ссылка на видео-обзор",
     )
 
+    video_preview = models.ImageField(
+        upload_to="products/video_previews/",
+        null=True,
+        blank=True,
+        verbose_name="Превью видео",
+    )
+
     # --- ЦЕНЫ ---
-    price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
+    price = models.PositiveIntegerField(
         verbose_name="Обычная цена",
     )
 
-    discount_price = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
+    discount_price = models.PositiveIntegerField(
         null=True,
         blank=True,
         verbose_name="Цена со скидкой",
@@ -90,11 +109,6 @@ class Product(models.Model):
         verbose_name="Популярный товар"
     )
 
-    is_discount = models.BooleanField(
-        default=False,
-        verbose_name="Скидка"
-    )
-
     is_new = models.BooleanField(
         default=False,
         verbose_name="Новинка"
@@ -120,113 +134,12 @@ class Product(models.Model):
         verbose_name="Серия товара",
     )
 
-    dimensions = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Размеры товара",
-        help_text="Формат: ДxШxВ в мм",
-    )
-
-    weight = models.DecimalField(
-        max_digits=7,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Вес товара (кг)",
-    )
-
-    heated_volume = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Объём отапливаемого помещения",
-    )
-
-    steam_volume_from = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Объём парильного помещения, от",
-    )
-
-    steam_volume_to = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Объём парильного помещения, до",
-    )
-
-    chimney_diameter = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Диаметр дымохода (мм)",
-    )
-
-    power_kw = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name="Мощность (кВт)",
-    )
-
-    stone_weight = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name="Масса закладываемых камней"
-    )
-
-    material = models.CharField(
+    purpose = models.CharField(
         max_length=32,
-        choices=MATERIAL_CHOICES,
-        blank=True,
+        choices=PURPOSE_CHOICES,
         null=True,
-        verbose_name="Вид топки",
-    )
-
-    firebox_material = models.CharField(
-        max_length=32,
-        choices=FIREBOX_MATERIAL_CHOICES,
         blank=True,
-        null=True,
-        verbose_name="Материал топки",
-    )
-
-    stone_material = models.CharField(
-        max_length=32,
-        choices=STONE_MATERIAL_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Материал камня",
-    )
-
-    door_type = models.CharField(
-        max_length=32,
-        choices=DOOR_TYPE_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Дверца",
-    )
-
-    door_mechanism = models.CharField(
-        max_length=32,
-        choices=DOOR_MECHANISM_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Механизм открывания дверцы",
-    )
-
-    fire_view = models.CharField(
-        max_length=32,
-        choices=FIRE_VIEW_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Обзор огня",
-    )
-
-    glass_count = models.CharField(
-        max_length=32,
-        choices=GLASS_COUNT_CHOICES,
-        blank=True,
-        null=True,
-        verbose_name="Количество стекол",
+        verbose_name="Назначение",
     )
 
     fuel_type = models.CharField(
@@ -237,12 +150,36 @@ class Product(models.Model):
         verbose_name="Тип топлива",
     )
 
-    tank_type = models.CharField(
+    heated_volume = models.CharField(
         max_length=32,
-        choices=TANK_TYPE_CHOICES,
+        choices=HEATED_VOLUME_CHOICES,
         null=True,
         blank=True,
-        verbose_name="Тип бака",
+        verbose_name="Площадь/объём отопления",
+    )
+
+    steam_room_volume = models.CharField(
+        max_length=32,
+        choices=STEAM_ROOM_VOLUME_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Площадь/объём парной",
+    )
+
+    power_kw = models.CharField(
+        max_length=32,
+        choices=POWER_KW_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Мощность (кВт)",
+    )
+
+    firebox_material = models.CharField(
+        max_length=32,
+        choices=FIREBOX_MATERIAL_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Материал топки",
     )
 
     firebox_type = models.CharField(
@@ -253,46 +190,142 @@ class Product(models.Model):
         verbose_name="Вид топки",
     )
 
-    stone_type = models.CharField(
+    installation_type = models.CharField(
         max_length=32,
-        choices=STONE_TYPE_CHOICES,
+        choices=INSTALLATION_TYPE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Тип установки",
+    )
+
+    firebox_orientation = models.CharField(
+        max_length=32,
+        choices=FIREBOX_ORIENTATION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Ориентация топки",
+    )
+
+    combustion_type = models.CharField(
+        max_length=32,
+        choices=COMBUSTION_TYPE_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Тип горения",
+    )
+
+    glass_count = models.CharField(
+        max_length=32,
+        choices=GLASS_COUNT_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Количество стекол",
+    )
+
+    fire_view = models.CharField(
+        max_length=32,
+        choices=FIRE_VIEW_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Обзор огня",
+    )
+
+    cladding_material = models.CharField(
+        max_length=32,
+        choices=CLADDING_MATERIAL_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Материал облицовки",
+    )
+
+    heater_type = models.CharField(
+        max_length=32,
+        choices=HEATER_TYPE_CHOICES,
         null=True,
         blank=True,
         verbose_name="Каменка",
     )
 
-    water_heating = models.CharField(
-        max_length=32,
-        choices=WATER_HEATING_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name="Нагрев воды",
+    water_circuit = models.BooleanField(
+        default=False,
+        verbose_name="Водяной контур",
     )
 
-    placement = models.CharField(
+    stone_material = models.CharField(
         max_length=32,
-        choices=PLACEMENT_CHOICES,
+        choices=STONE_MATERIAL_CHOICES,
         null=True,
         blank=True,
-        verbose_name="Расположение топки",
+        verbose_name="Материал камня",
     )
 
-    facing_type = models.CharField(
+    tank_type = models.CharField(
         max_length=32,
-        choices=FACING_TYPE_CHOICES,
+        choices=TANK_TYPE_CHOICES,
         null=True,
         blank=True,
-        verbose_name="Тип облицовки",
+        verbose_name="Тип бака",
+    )
+
+
+    door_mechanism = models.CharField(
+        max_length=32,
+        choices=DOOR_MECHANISM_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Механизм открывания двери",
+    )
+
+    chimney_diameter = models.CharField(
+        max_length=32,
+        choices=CHIMNEY_DIAMETER_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Диаметр дымохода",
+    )
+
+    chimney_connection = models.CharField(
+        max_length=16,
+        choices=CHIMNEY_CONNECTION_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Подключение к дымоходу",
+    )
+
+    dimensions = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Габариты (Д×Ш×В, мм)",
+        help_text="Формат: ДxШxВ в мм",
+    )
+
+    weight = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Вес, кг",
+    )
+
+    steam_volume_from = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Объём парной от, м³",
+    )
+
+    steam_volume_to = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Объём парной до, м³",
+    )
+
+    stone_weight = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Масса закладываемых камней, кг",
     )
 
     heat_exchanger = models.BooleanField(
         default=False,
         verbose_name="Теплообменник",
-    )
-
-    long_burning = models.BooleanField(
-        default=False,
-        verbose_name="Система длительного горения",
     )
 
     glass_lift = models.BooleanField(
@@ -308,6 +341,33 @@ class Product(models.Model):
     cooking_panel = models.BooleanField(
         default=False,
         verbose_name="Варочная панель",
+    )
+
+    efficiency = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="КПД, %",
+        help_text="Указывается в процентах",
+    )
+
+    warranty_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Гарантия, лет",
+    )
+
+    closed_heater_volume = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="Объём закрытой каменки, л",
+    )
+
+    package_weight = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Масса в упаковке, кг",
     )
 
     # --- SEO ---
@@ -357,6 +417,7 @@ class Product(models.Model):
             self.slug = slug
 
         super().save(*args, **kwargs)
+
 
 class ProductImage(models.Model):
     product = models.ForeignKey(

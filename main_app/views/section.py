@@ -2,8 +2,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from main_app.models import Manufacturer, FUEL_TYPE_CHOICES
+from main_app.models import Manufacturer
 from main_app.models.section import Section
+from main_app.views.utils.filter_helper import filters
 from main_app.serializers.manufacturer import ManufacturerPreviewSerializer
 from main_app.serializers.section import SectionTreeSerializer
 
@@ -23,16 +24,8 @@ class CatalogFiltersAPIView(APIView):
             is_active=True
         )
 
-        fuel_types = [
-            {
-                "value": value,
-                "label": label
-            }
-            for value, label in FUEL_TYPE_CHOICES
-        ]
-
         return Response({
             "sections": SectionTreeSerializer(sections, many=True).data,
             "manufacturers": ManufacturerPreviewSerializer(manufacturers, many=True).data,
-            "fuel_types": fuel_types,
+            "filters": filters,
         })

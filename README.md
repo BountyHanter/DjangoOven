@@ -93,7 +93,8 @@ curl http://127.0.0.1:8000/health/
 
 ### Особенности типов
 
-- Все `DecimalField` приходят строками (например, `"100000.00"`).
+- Большинство числовых полей (цены, вес, объёмы) приходят числами.
+- `DecimalField` приходят строками (например, `"95.50"` для `package_weight`).
 - Поля файлов/картинок возвращаются как URL (обычно абсолютный) или относительный путь от `MEDIA_URL` (`/media/...`).
 
 ---
@@ -102,7 +103,7 @@ curl http://127.0.0.1:8000/health/
 
 **GET** `/api/v1/catalog/filters/`
 
-Возвращает дерево разделов, список производителей и список типов топлива.
+Возвращает дерево разделов, список производителей и набор фильтров по характеристикам товаров.
 
 ### Ответ
 ```json
@@ -112,7 +113,7 @@ curl http://127.0.0.1:8000/health/
       "id": 1,
       "name": "Основные печи",
       "slug": "main_oven",
-      "menu_name": "",
+      "image": "/media/sections/images/main.png",
       "browser_title": "",
       "description": "",
       "meta_description": "",
@@ -123,7 +124,7 @@ curl http://127.0.0.1:8000/health/
           "id": 2,
           "name": "Дочерняя печь",
           "slug": "child_oven",
-          "menu_name": "",
+          "image": null,
           "browser_title": "",
           "description": "",
           "meta_description": "",
@@ -138,12 +139,24 @@ curl http://127.0.0.1:8000/health/
     { "id": 1, "name": "Plamen", "slug": "plamen", "logo": "/media/manufacturers/plamen.png", "priority": 10 },
     { "id": 2, "name": "EasySteam", "slug": "easysteam", "logo": "/media/manufacturers/easysteam.png", "priority": 5 }
   ],
-  "fuel_types": [
-    { "value": "gas", "label": "Газ" },
-    { "value": "wood", "label": "Дровяной" }
-  ]
+  "filters": {
+    "fuel_type": [
+      { "value": "gas", "label": "Газовая" },
+      { "value": "wood", "label": "Дровяная" }
+    ],
+    "purpose": [
+      { "value": "home", "label": "Для дома" },
+      { "value": "sauna_bath", "label": "Для сауны / бани" }
+    ]
+  }
 }
 ```
+
+Ключи в `filters`:
+`purpose`, `fuel_type`, `heated_volume`, `steam_room_volume`, `power_kw`,
+`firebox_material`, `firebox_type`, `installation_type`, `firebox_orientation`,
+`combustion_type`, `glass_count`, `fire_view`, `cladding_material`,
+`heater_type`, `stone_material`, `tank_type`, `door_mechanism`, `chimney_diameter`.
 
 ---
 
@@ -162,20 +175,36 @@ curl http://127.0.0.1:8000/health/
   > Включает выбранные разделы **и все их дочерние категории**.
 * `manufacturer` — фильтр по производителям (можно несколько):
   `manufacturer=1&manufacturer=2`
-* `fuel_type` — фильтр по типу топлива (можно несколько):
-  `fuel_type=wood&fuel_type=gas`
 * `price_from` — минимальная цена
 * `price_to` — максимальная цена
+* `discount` — только товары со скидкой (любое truthy-значение, например `1`)
 * `ordering` — сортировка:
 
   * `popular` — сначала популярные
   * `price_asc` — цена по возрастанию
   * `price_desc` — цена по убыванию
+  * иначе можно сортировать по любому полю модели `Product`:
+    `ordering=price`, `ordering=-price`, `ordering=created_at` и т.д.
+  * дополнительно разрешены поля `final_price` и `has_video`
   * если не задано — сортировка по `created_at` (сначала новые)
 * `page` — номер страницы (пагинация)
 
 > Важно: фильтрация по цене учитывает скидку.
 > Если `discount_price` заполнена — используется она, иначе обычная `price`.
+
+### Авто-фильтры по полям Product
+
+Можно фильтровать по **любому** полю модели `Product` (включая `fuel_type`,
+`purpose`, `installation_type`, `power_kw`, `chimney_diameter`, булевые поля и т.д.).
+
+Примеры:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/?purpose=home&installation_type=wall&power_kw=kw_12"
+```
+
+Булевые параметры принимают значения `1/0`, `true/false`, `yes/no`, `on/off`.
+Неизвестные параметры запроса игнорируются.
 
 ---
 
@@ -233,11 +262,11 @@ sections = [
       "is_popular": true,
       "is_bestseller": false,
       "has_video": true,
-      "price": "100000.00",
-      "discount_price": "90000.00",
+      "price": 100000,
+      "discount_price": 90000,
       "fuel_type": "wood",
-      "fuel_type_display": "Дровяной",
-      "power_kw": "12.00",
+      "fuel_type_display": "Дровяная",
+      "power_kw": "kw_12",
 
       "sections": [
         [
@@ -284,7 +313,9 @@ sections = [
 * `sections` — массив путей категорий (breadcrumb). Каждый элемент — полный путь раздела **от корня до конечной категории**, к которой привязан товар.
 * `images` — массив `{image, is_main, ordering}`
 * `documents` — массив `{title, file}`
-* `fuel_type_display` — человекочитаемое название топлива
+* `video_preview` — превью видео (URL) или `null`
+* Для всех полей с choices автоматически добавляется `<field>_display`
+  (например `fuel_type_display`, `combustion_type_display`, `power_kw_display`)
 
 ### ⚠️ Поле `sections`
 
@@ -330,46 +361,51 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
   ],
   "description": "Полное описание товара",
   "video_url": "https://youtube.com/test",
-  "price": "150000.00",
-  "discount_price": "120000.00",
+  "video_preview": "http://127.0.0.1:8000/media/products/video_previews/test.jpg",
+  "price": 150000,
+  "discount_price": 120000,
   "price_in_euro": true,
   "free_delivery": true,
   "in_stock": true,
   "is_active": true,
   "is_popular": true,
-  "is_discount": true,
   "is_new": true,
   "is_bestseller": true,
   "sku": "SKU-123,SKU-456",
   "series": "Premium",
   "dimensions": "800x600x900",
-  "weight": "85.50",
-  "heated_volume": 120,
+  "weight": 85,
+  "purpose": "home",
+  "fuel_type": "wood",
+  "heated_volume": "100_150",
+  "steam_room_volume": "20_30",
+  "power_kw": "kw_14",
+  "firebox_material": "steel",
+  "firebox_type": "with_extension",
+  "installation_type": "corner",
+  "firebox_orientation": "horizontal",
+  "combustion_type": "long_burning",
+  "glass_count": "two",
+  "fire_view": "panoramic_glass",
+  "cladding_material": "stone",
+  "heater_type": "combined",
+  "water_circuit": true,
+  "stone_material": "natural",
+  "tank_type": "samovar",
+  "door_mechanism": "side_opening",
+  "chimney_diameter": "115",
+  "chimney_connection": "top",
   "steam_volume_from": 10,
   "steam_volume_to": 20,
-  "chimney_diameter": 115,
-  "power_kw": "14.50",
   "stone_weight": 90,
-  "material": "cast_iron",
-  "firebox_material": "steel",
-  "stone_material": "natural",
-  "door_type": "with_glass",
-  "door_mechanism": "side_opening",
-  "fire_view": "panoramic_glass",
-  "glass_count": "two",
-  "fuel_type": "wood",
-  "fuel_type_display": "Дровяной",
-  "tank_type": "samovar",
-  "firebox_type": "with_extension",
-  "stone_type": "combined",
-  "water_heating": "with_heat_exchanger",
-  "placement": "corner",
-  "facing_type": "fireplace_frame",
   "heat_exchanger": true,
-  "long_burning": true,
   "glass_lift": true,
   "damper": true,
   "cooking_panel": true,
+  "efficiency": 82,
+  "warranty_years": 5,
+  "closed_heater_volume": 30,
+  "package_weight": "95.50",
   "seo_title": "SEO заголовок",
   "seo_description": "SEO описание",
   "seo_keywords": "печь, баня, harvia",
@@ -408,7 +444,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 
 **GET** `/api/v1/catalog/portfolio/`
 
-Возвращает портфолио с возможностью фильтрации по товару, разделу и признаку `main`.
+Возвращает портфолио с возможностью фильтрации по товару, разделу, производителю и признаку `main`.
 
 ### 4.2) Портфолио по товару
 
@@ -420,6 +456,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 
 * `product` — фильтр по товару (ID)
 * `section` — фильтр по разделу (ID)
+* `manufacturer` — фильтр по производителю (ID, можно несколько)
 * `main` — только для главной (`main=true`)
 
 ### Что возвращается
@@ -561,7 +598,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
       "installation_time": "1 день",
       "location": "Москва",
       "work_description": "Установка печи и дымохода",
-      "price": "120000.00",
+      "price": 120000,
       "video_url": "https://youtube.com/test",
       "preview_image": "http://127.0.0.1:8000/media/reviews/video_preview/review-5.jpg",
       "product_id": 15,
@@ -575,7 +612,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
       "installation_time": "2 дня",
       "location": "Тверь",
       "work_description": "Доставка и подключение",
-      "price": "90000.00",
+      "price": 90000,
       "video_url": "https://youtube.com/test2",
       "preview_image": null,
       "product_id": 15,
@@ -657,7 +694,10 @@ curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority"
 * `slug`
 * `logo`
 * `priority`
-* `keywords` — SEO ключевые слова
+* `is_active` — активен/неактивен
+* `seo_title` — название страницы
+* `seo_description` — описание страницы
+* `seo_keywords` — SEO ключевые слова
 * `short_description` — краткое описание
 * `description` — полное описание
 * `video` — видео (строка/URL)
@@ -674,9 +714,12 @@ curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/3/"
   "id": 3,
   "name": "Harvia",
   "slug": "harvia",
+  "is_active": true,
   "logo": "http://127.0.0.1:8000/media/manufacturers/harvia.png",
   "priority": 100,
-  "keywords": "печи, баня, harvia",
+  "seo_title": "Harvia — печи для бани",
+  "seo_description": "Описание страницы бренда",
+  "seo_keywords": "печи, баня, harvia",
   "short_description": "Финские печи для бани",
   "description": "Полное описание бренда",
   "video": "https://youtube.com/test",

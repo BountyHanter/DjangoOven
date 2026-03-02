@@ -31,11 +31,16 @@ class ManufacturerDetailSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
+            "is_active",
             "logo",
             "priority",
 
-            # SEO / контент
-            "keywords",
+            # SEO
+            "seo_title",
+            "seo_description",
+            "seo_keywords",
+
+            # контент
             "short_description",
             "description",
             "video",

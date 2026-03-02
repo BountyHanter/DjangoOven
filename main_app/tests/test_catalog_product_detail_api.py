@@ -56,7 +56,6 @@ def test_product_detail_api_full():
         in_stock=True,
         is_active=True,
         is_popular=True,
-        is_discount=True,
         is_new=True,
         is_bestseller=True,
 
@@ -65,32 +64,33 @@ def test_product_detail_api_full():
         series="Premium",
         dimensions="800x600x900",
         weight=85.5,
-        heated_volume=120,
         steam_volume_from=10,
         steam_volume_to=20,
-        chimney_diameter=115,
-        power_kw=14.5,
         stone_weight=90,
 
-        # --- choices ---
-        material="cast_iron",
-        firebox_material="steel",
-        stone_material="natural",
-        door_type="with_glass",
-        door_mechanism="side_opening",
-        fire_view="panoramic_glass",
-        glass_count="two",
+        # --- choices (ВАЖНО: строки-ключи) ---
+        purpose="home",
         fuel_type="wood",
-        tank_type="samovar",
+        heated_volume="100_150",
+        power_kw="kw_14",
+        firebox_material="steel",
         firebox_type="with_extension",
-        stone_type="combined",
-        water_heating="with_heat_exchanger",
-        placement="corner",
-        facing_type="fireplace_frame",
+        installation_type="corner",
+        combustion_type="long_burning",
+        glass_count="two",
+        fire_view="panoramic_glass",
+        cladding_material="stone",
+        heater_type="combined",
+        water_circuit=True,
+        stone_material="natural",
+        steam_room_volume="20_30",
+        firebox_orientation="horizontal",
+        tank_type="samovar",
+        door_mechanism="side_opening",
+        chimney_diameter="115",
 
         # --- booleans ---
         heat_exchanger=True,
-        long_burning=True,
         glass_lift=True,
         damper=True,
         cooking_panel=True,
@@ -100,7 +100,6 @@ def test_product_detail_api_full():
         seo_description="SEO описание",
         seo_keywords="печь, баня, harvia",
     )
-
     product.sections.add(child_section)
 
     # ---------------- IMAGES ----------------
@@ -148,3 +147,15 @@ def test_product_detail_api_full():
     assert data["name"] == "Тестовая печь MAX PRO"
     assert len(data["images"]) == 2
     assert len(data["documents"]) == 2
+
+    assert data["manufacturer"]["name"] == "Harvia"
+
+    # sections: путь из 2 уровней
+    assert len(data["sections"]) == 1
+    assert [s["slug"] for s in data["sections"][0]] == ["main_oven", "wood_oven"]
+
+    # choices + display
+    assert data["fuel_type"] == "wood"
+    assert "fuel_type_display" in data
+    assert data["combustion_type"] == "long_burning"
+    assert "combustion_type_display" in data

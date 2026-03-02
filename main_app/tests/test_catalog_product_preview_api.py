@@ -42,7 +42,7 @@ def test_product_catalog_api():
         price=100000,
         discount_price=90000,
         fuel_type="wood",
-        power_kw=12,
+        power_kw="kw_12",
         is_active=True,
     )
 
@@ -76,13 +76,13 @@ def test_product_catalog_api():
     item = results[0]
 
     assert item["name"] == "Тестовая печь"
-    assert item["price"] == "100000.00"
-    assert item["discount_price"] == "90000.00"
+    assert item["price"] == 100000
+    assert item["discount_price"] == 90000
 
     assert item["fuel_type"] == "wood"
-    assert item["fuel_type_display"] == "Дровяной"
+    assert item["fuel_type_display"] == "Дровяная"
 
-    assert item["power_kw"] == "12.00"
+    assert item["power_kw"] == "kw_12"
 
     assert len(item["images"]) == 2
 
@@ -214,3 +214,132 @@ def test_filter_products_by_price_range(client):
 
     assert "Дешёвая печь" not in names
     assert "Дорогая печь" not in names
+
+
+# -------------------------------------------------------------------
+# НОВЫЕ ТЕСТЫ: фильтры по choices / булевки / скидки / авто-сортировка
+# -------------------------------------------------------------------
+
+@pytest.mark.django_db
+def test_filter_products_discount_only(client):
+    Product.objects.create(
+        name="Без скидки",
+        price=100000,
+        is_active=True,
+    )
+    Product.objects.create(
+        name="Со скидкой",
+        price=100000,
+        discount_price=90000,
+        is_active=True,
+    )
+
+    url = reverse("catalog-products")
+    response = client.get(url, {"discount": "1"})
+
+    assert response.status_code == 200
+    results = get_results(response)
+
+    assert len(results) == 1
+    assert results[0]["name"] == "Со скидкой"
+
+
+@pytest.mark.django_db
+def test_filter_products_by_new_choice_fields(client):
+    Product.objects.create(
+        name="Печь A",
+        price=50000,
+        is_active=True,
+        purpose="home",
+        installation_type="wall",
+        firebox_material="cast_iron",
+        power_kw="kw_10",
+        chimney_diameter="115",
+    )
+    Product.objects.create(
+        name="Печь B",
+        price=60000,
+        is_active=True,
+        purpose="cottage",
+        installation_type="corner",
+        firebox_material="steel",
+        power_kw="kw_12",
+        chimney_diameter="150",
+    )
+
+    url = reverse("catalog-products")
+    response = client.get(url, {
+        "purpose": ["home"],
+        "installation_type": ["wall"],
+        "firebox_material": ["cast_iron"],
+        "power_kw": ["kw_10"],
+        "chimney_diameter": ["115"],
+    })
+
+    assert response.status_code == 200
+    results = get_results(response)
+
+    assert len(results) == 1
+    assert results[0]["name"] == "Печь A"
+
+
+@pytest.mark.django_db
+def test_filter_products_by_boolean_field(client):
+    Product.objects.create(
+        name="С варочной панелью",
+        price=70000,
+        is_active=True,
+        cooking_panel=True,
+    )
+    Product.objects.create(
+        name="Без панели",
+        price=70000,
+        is_active=True,
+        cooking_panel=False,
+    )
+
+    url = reverse("catalog-products")
+    response = client.get(url, {"cooking_panel": "1"})
+
+    assert response.status_code == 200
+    results = get_results(response)
+
+    assert len(results) == 1
+    assert results[0]["name"] == "С варочной панелью"
+
+
+@pytest.mark.django_db
+def test_unknown_filter_param_is_ignored(client):
+    Product.objects.create(name="Печь X", price=10000, is_active=True)
+    Product.objects.create(name="Печь Y", price=20000, is_active=True)
+
+    url = reverse("catalog-products")
+    response = client.get(url, {"какойто_мусор": "123"})
+
+    # важно: не 400/500, а нормально игнорируем
+    assert response.status_code == 200
+    results = get_results(response)
+    assert len(results) == 2
+
+
+@pytest.mark.django_db
+def test_auto_ordering_by_model_field_price(client):
+    Product.objects.create(name="Печь 300", price=300, is_active=True)
+    Product.objects.create(name="Печь 100", price=100, is_active=True)
+    Product.objects.create(name="Печь 200", price=200, is_active=True)
+
+    url = reverse("catalog-products")
+
+    # auto sort: ordering=price
+    response = client.get(url, {"ordering": "price"})
+    assert response.status_code == 200
+    results = get_results(response)
+    names = [x["name"] for x in results]
+    assert names[:3] == ["Печь 100", "Печь 200", "Печь 300"]
+
+    # auto sort: ordering=-price
+    response = client.get(url, {"ordering": "-price"})
+    assert response.status_code == 200
+    results = get_results(response)
+    names = [x["name"] for x in results]
+    assert names[:3] == ["Печь 300", "Печь 200", "Печь 100"]
