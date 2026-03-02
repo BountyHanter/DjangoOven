@@ -6,8 +6,6 @@ from main_app.admin.forms.product import ProductAdminForm
 from main_app.models.product import Product, ProductImage, ProductDocument
 from main_app.models.section import Section
 
-admin.site.register(Section)
-
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1
