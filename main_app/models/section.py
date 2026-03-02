@@ -27,7 +27,7 @@ class Section(models.Model):
         max_length=255,
         blank=True,
         null=True,
-        verbose_name="Описание раздела",
+        verbose_name="Описание для главной",
     )
 
     image = models.ImageField(
