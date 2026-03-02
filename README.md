@@ -110,6 +110,8 @@ curl http://127.0.0.1:8000/health/
 - Возвращается дерево категорий с вложенными `children`.
 - В `children` попадают только активные разделы (`is_active=True`).
 - Сортировка внутри одного родителя: сначала по `ordering`, затем по `name`.
+- Поле `description_main` — Описание раздела для главной страницы.
+- Поле `description` — подробное описание (текст).
 
 ### Ответ
 ```json
@@ -119,6 +121,7 @@ curl http://127.0.0.1:8000/health/
       "id": 1,
       "name": "Основные печи",
       "slug": "main_oven",
+      "description_main": "",
       "image": "/media/sections/images/main.png",
       "browser_title": "",
       "description": "",
@@ -130,6 +133,7 @@ curl http://127.0.0.1:8000/health/
           "id": 2,
           "name": "Дочерняя печь",
           "slug": "child_oven",
+          "description_main": "",
           "image": null,
           "browser_title": "",
           "description": "",

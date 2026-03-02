@@ -23,7 +23,7 @@ class Section(models.Model):
         verbose_name="Родительский раздел",
     )
 
-    description = models.CharField(
+    description_main = models.CharField(
         max_length=255,
         blank=True,
         null=True,
