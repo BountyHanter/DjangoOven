@@ -23,6 +23,7 @@ class SectionAdmin(admin.ModelAdmin):
         "name",
         "slug",
         "parent",
+        "description",
         "image",
         "image_preview",
         "menu_name",

@@ -11,6 +11,7 @@ class SectionTreeSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
+            "description",
             "image",
             "browser_title",
             "description",

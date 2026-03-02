@@ -23,6 +23,13 @@ class Section(models.Model):
         verbose_name="Родительский раздел",
     )
 
+    description = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Описание раздела",
+    )
+
     image = models.ImageField(
         upload_to="sections/images/",
         null=True,
