@@ -35,6 +35,7 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "is_bestseller",
             "has_video",
             "price",
+            "price_in_euro",
             "discount_price",
             "fuel_type",
             "fuel_type_display",
