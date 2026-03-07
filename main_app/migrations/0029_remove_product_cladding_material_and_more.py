@@ -11,6 +11,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+
+        migrations.RunSQL(
+            """
+            UPDATE main_app_product
+            SET power_kw = ROUND(power_kw::numeric)
+            WHERE power_kw IS NOT NULL;
+            """
+        ),
+
         migrations.RemoveField(
             model_name='product',
             name='cladding_material',
