@@ -128,13 +128,15 @@ class ProductFilterSerializer(serializers.Serializer):
     )
 
     # --- boolean ---
-    water_circuit = serializers.BooleanField(required=False)
-    long_fire = serializers.BooleanField(required=False)
-    heat_exchanger = serializers.BooleanField(required=False)
-    glass_lift = serializers.BooleanField(required=False)
-    damper = serializers.BooleanField(required=False)
-    cooking_panel = serializers.BooleanField(required=False)
-    discount = serializers.BooleanField(required=False)
+    # QueryDict treats missing booleans as False by default in DRF.
+    # Keep omitted params as None so catalog isn't implicitly filtered.
+    water_circuit = serializers.BooleanField(required=False, allow_null=True, default=None)
+    long_fire = serializers.BooleanField(required=False, allow_null=True, default=None)
+    heat_exchanger = serializers.BooleanField(required=False, allow_null=True, default=None)
+    glass_lift = serializers.BooleanField(required=False, allow_null=True, default=None)
+    damper = serializers.BooleanField(required=False, allow_null=True, default=None)
+    cooking_panel = serializers.BooleanField(required=False, allow_null=True, default=None)
+    discount = serializers.BooleanField(required=False, allow_null=True, default=None)
 
     # --- range ---
     price_from = serializers.IntegerField(required=False)

@@ -35,3 +35,33 @@ def test_filter_products_by_boolean_field():
 
     assert len(results) == 1
     assert results[0]["name"] == "Печь с панелью"
+
+
+@pytest.mark.django_db
+def test_missing_boolean_params_do_not_apply_false_filters():
+
+    client = APIClient()
+
+    Product.objects.create(
+        name="Печь с панелью",
+        price=10000,
+        cooking_panel=True,
+        is_active=True,
+    )
+
+    Product.objects.create(
+        name="Печь без панели",
+        price=10000,
+        cooking_panel=False,
+        is_active=True,
+    )
+
+    url = reverse("catalog-products")
+
+    response = client.get(url)
+
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+
+    assert len(results) == 2
