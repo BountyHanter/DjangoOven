@@ -51,7 +51,6 @@ htmlcov/
 Thumbs.db
 
 # Django локал файлы
-static/*
 media/*
 staticfiles/*
 # но сохраняем .gitkeep, чтобы папки были в репозитории

@@ -73,3 +73,9 @@ class ManufacturerAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+    class Media:
+        js = ("admin/js/image_preview.js",)
+        css = {
+            "all": ("admin/css/image_preview.css",)
+        }

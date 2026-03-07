@@ -47,3 +47,9 @@ class SectionAdmin(admin.ModelAdmin):
         return "—"
 
     image_preview.short_description = "Превью"
+
+    class Media:
+        js = ("admin/js/image_preview.js",)
+        css = {
+            "all": ("admin/css/image_preview.css",)
+        }

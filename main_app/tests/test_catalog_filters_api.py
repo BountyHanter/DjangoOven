@@ -4,6 +4,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from main_app.models import Product
 from main_app.models.section import Section
 from main_app.models.manufacturer import Manufacturer
 
@@ -13,7 +14,8 @@ def test_catalog_filters_api():
 
     client = APIClient()
 
-    # --- sections ---
+    # ---------------- SECTIONS ----------------
+
     parent = Section.objects.create(
         name="Основные печи",
         slug="main_oven",
@@ -21,42 +23,89 @@ def test_catalog_filters_api():
     )
 
     Section.objects.create(
-        name="Дочерняя печь",
-        slug="child_oven",
+        name="Дровяные печи",
+        slug="wood_oven",
         parent=parent,
         ordering=1,
     )
 
-    # --- manufacturers ---
-    Manufacturer.objects.create(
+    # ---------------- MANUFACTURERS ----------------
+
+    plamen = Manufacturer.objects.create(
         name="Plamen",
         slug="plamen",
         is_active=True,
     )
 
-    Manufacturer.objects.create(
+    easysteam = Manufacturer.objects.create(
         name="EasySteam",
         slug="easysteam",
         is_active=True,
     )
 
-    url = reverse("catalog-filters")
-    response = client.get(url)
-    data = response.json()
+    # ---------------- PRODUCTS ----------------
 
-    print(json.dumps(data, indent=4, ensure_ascii=False))
+    product_a = Product.objects.create(
+        name="Печь A",
+        price=10000,
+        power_kw=10,
+        chimney_diameter="115",
+        manufacturer=plamen,
+        is_active=True,
+    )
+
+    product_b = Product.objects.create(
+        name="Печь B",
+        price=20000,
+        power_kw=20,
+        chimney_diameter="120",
+        manufacturer=easysteam,
+        is_active=True,
+    )
+
+    product_c = Product.objects.create(
+        name="Печь C",
+        price=30000,
+        power_kw=30,
+        chimney_diameter="115",
+        manufacturer=plamen,
+        is_active=True,
+    )
+
+    child_section = Section.objects.get(slug="wood_oven")
+
+    product_a.sections.add(parent)
+    product_b.sections.add(child_section)
+    product_c.sections.add(child_section)
+
+    # ---------------- REQUEST ----------------
+
+    url = reverse("catalog-filters")
+
+    response = client.get(url)
 
     assert response.status_code == 200
 
-    # --- sections проверки ---
+    data = response.json()
+
+    print("\n\n========== FILTERS ==========")
+    print(json.dumps(data, indent=4, ensure_ascii=False))
+    print("=============================\n\n")
+
+    # ---------------- SECTIONS ----------------
+
     assert "sections" in data
     assert len(data["sections"]) == 1
-    assert data["sections"][0]["name"] == "Основные печи"
 
-    assert len(data["sections"][0]["children"]) == 1
-    assert data["sections"][0]["children"][0]["name"] == "Дочерняя печь"
+    parent_section = data["sections"][0]
 
-    # --- manufacturers проверки ---
+    assert parent_section["name"] == "Основные печи"
+
+    assert len(parent_section["children"]) == 1
+    assert parent_section["children"][0]["name"] == "Дровяные печи"
+
+    # ---------------- MANUFACTURERS ----------------
+
     assert "manufacturers" in data
     assert len(data["manufacturers"]) == 2
 
@@ -65,11 +114,76 @@ def test_catalog_filters_api():
     assert "Plamen" in manufacturer_names
     assert "EasySteam" in manufacturer_names
 
-    # --- fuel type проверки ---
+    # ---------------- FILTERS ----------------
+
     assert "filters" in data
-    assert "fuel_type" in data["filters"]
 
-    assert len(data["filters"]["fuel_type"]) > 0
+    filters = data["filters"]
 
-    values = [f["value"] for f in data["filters"]["fuel_type"]]
-    assert "gas" in values
+    assert isinstance(filters, list)
+    assert len(filters) > 0
+
+    # проверяем структуру фильтра
+    first_filter = filters[0]
+
+    assert "field" in first_filter
+    assert "label" in first_filter
+    assert "type" in first_filter
+
+    # ---------------- PRICE RANGE ----------------
+
+    price_filter = next(
+        f for f in filters if f["field"] == "price"
+    )
+
+    assert price_filter["type"] == "range"
+
+    assert price_filter["min"] == 10000
+    assert price_filter["max"] == 30000
+
+    assert price_filter["params"]["min"] == "price_from"
+    assert price_filter["params"]["max"] == "price_to"
+
+    # ---------------- CHIMNEY DIAMETER ----------------
+
+    chimney_filter = next(
+        f for f in filters if f["field"] == "chimney_diameter"
+    )
+
+    assert chimney_filter["type"] == "select"
+
+    options = chimney_filter["options"]
+
+    values = [o["value"] for o in options]
+
+    assert "115" in values
+    assert "120" in values
+
+    # должны быть только уникальные значения
+    assert len(values) == 2
+
+    # ---------------- POWER RANGE ----------------
+
+    power_filter = next(
+        f for f in filters if f["field"] == "power_kw"
+    )
+
+    assert power_filter["type"] == "range"
+
+    assert power_filter["params"]["min"] == "power_kw_min"
+    assert power_filter["params"]["max"] == "power_kw_max"
+
+    # ---------------- SORTING ----------------
+
+    assert "sorting" in data
+
+    sorting = data["sorting"]
+
+    assert isinstance(sorting, list)
+    assert len(sorting) > 0
+
+    sorting_values = [s["value"] for s in sorting]
+
+    assert "new" in sorting_values
+    assert "price_asc" in sorting_values
+    assert "price_desc" in sorting_values

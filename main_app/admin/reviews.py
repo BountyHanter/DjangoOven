@@ -66,3 +66,9 @@ class ReviewAdmin(admin.ModelAdmin):
     )
 
     ordering = ("-created_at",)
+
+    class Media:
+        js = ("admin/js/image_preview.js",)
+        css = {
+            "all": ("admin/css/image_preview.css",)
+        }

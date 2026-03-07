@@ -1,7 +1,15 @@
 from rest_framework import serializers
 
-from main_app.models import Product, ProductImage
+from main_app.models import Product, ProductImage, Manufacturer
 
+
+class ManufacturerPreviewSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Manufacturer
+        fields = (
+            "name",
+        )
 
 class ProductImageSerializer(serializers.ModelSerializer):
 
@@ -15,6 +23,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 
 class ProductPreviewSerializer(serializers.ModelSerializer):
+    manufacturer = ManufacturerPreviewSerializer(read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     has_video = serializers.BooleanField(read_only=True)
     sections = serializers.SerializerMethodField()
@@ -30,12 +39,11 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "sections",
+            "manufacturer",
             "is_new",
-            "is_popular",
             "is_bestseller",
             "has_video",
             "price",
-            "price_in_euro",
             "discount_price",
             "fuel_type",
             "fuel_type_display",

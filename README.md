@@ -1,263 +1,268 @@
-# DjangoOven — API каталога печей
+# DjangoOven Frontend API Documentation
 
-Проект на Django + DRF для каталога товаров (печи, камины и т.д.) с фильтрами и публичным API для фронтенда.
+Документация ниже описывает API именно как контракт для фронтенда.
+Только фактическое поведение текущего бэкенда: URL, параметры, фильтры, пагинация, сортировка и структура ответов.
 
-## Что внутри
+## 1. Base URL и общие правила
 
-- Django 5.1 + DRF
-- Публичные API-эндпойнты каталога
-- Админка для наполнения
-- Docker Compose (PostgreSQL + gunicorn)
-- SQLite для локальной разработки при `DEBUG=True`
-
-## Быстрый старт (локально, SQLite)
-
-1) Склонируйте проект и перейдите в папку:
-```bash
-cd DjangoOven
-```
-
-2) Создайте `.env` из примера:
-```bash
-cp .env.example .env
-```
-
-3) Убедитесь, что в `.env` стоит `DEBUG=True` (по умолчанию так и есть).
-
-4) Создайте виртуальное окружение и установите зависимости:
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-5) Примените миграции и запустите сервер:
-```bash
-python manage.py migrate
-python manage.py runserver
-```
-
-Проект будет доступен по адресу: `http://127.0.0.1:8000/`
-
-## Запуск через Docker Compose (PostgreSQL + gunicorn)
-
-1) Скопируйте `.env` и заполните:
-```bash
-cp .env.example .env
-```
-
-2) В `.env` установите `DEBUG=False` и пропишите реальные `DB_*` переменные.
-
-3) Запустите:
-```bash
-docker-compose up --build -d
-```
-
-4) Проверьте healthcheck:
-```bash
-curl http://127.0.0.1:8000/health/
-```
-
-## Полезные URL
-
-- `http://127.0.0.1:8000/admin/` — админка
-- `http://127.0.0.1:8000/health/` — healthcheck
-- `http://127.0.0.1:8000/api/v1/` — API (каталог)
-
----
-
-# API документация (для фронтенда)
-
-## Общая информация
-
-- Базовый URL: `http://127.0.0.1:8000` (локально)
-- Префикс API: `/api/v1/`
+- Base URL (локально): `http://127.0.0.1:8000`
+- API prefix: `/api/v1/`
 - Формат: JSON
-- Аутентификация: **не требуется** (эндпойнты каталога публичные)
+- Аутентификация: для публичных каталоговых endpoint не требуется
+- Медиа-файлы (`image`, `file`) обычно приходят как URL вида `/media/...` или абсолютный URL (зависит от контекста запроса)
 
-### Пагинация
+## 2. Общая пагинация (для всех list endpoint)
 
-Список товаров использует стандартную пагинацию DRF (PageNumberPagination):
-- Параметр страницы: `page`
-- Размер страницы: `9`
+Все endpoint на `ListAPIView` используют одну и ту же пагинацию:
 
-Пример ответа:
+- `page` — номер страницы
+- `page_size` — размер страницы
+- `page_size` по умолчанию: `9`
+- `max page_size`: `100`
+
+Типовой ответ:
+
 ```json
 {
   "count": 37,
   "next": "http://127.0.0.1:8000/api/v1/catalog/products/?page=2",
   "previous": null,
-  "results": [ ... ]
+  "results": []
 }
 ```
 
-### Особенности типов
+## 3. Форматы и типы
 
-- Большинство числовых полей (цены, вес, объёмы) приходят числами.
-- `DecimalField` приходят строками (например, `"95.50"` для `package_weight`).
-- Поля файлов/картинок возвращаются как URL (обычно абсолютный) или относительный путь от `MEDIA_URL` (`/media/...`).
+- `datetime`: формат `%Y-%m-%dT%H:%M:%S.%f%z` (например, `2026-03-07T12:44:10.123456+0000`)
+- `DecimalField`: строкой (например, `"95.50"`)
+- `IntegerField`: числом
+- `BooleanField`: `true/false`
+
+## 4. Быстрый список endpoint
+
+- `GET /api/v1/health/` — healthcheck
+- `GET /api/v1/catalog/filters/` — дерево разделов + бренды + метаданные фильтров + сортировки
+- `GET /api/v1/catalog/products/` — список товаров (каталог)
+- `GET /api/v1/catalog/products/{id}/` — карточка товара
+- `GET /api/v1/catalog/portfolio/` — список портфолио
+- `GET /api/v1/catalog/products/{product_id}/portfolio/` — портфолио товара
+- `GET /api/v1/catalog/reviews/` — все отзывы
+- `GET /api/v1/catalog/products/{product_id}/reviews/` — отзывы товара
+- `GET /api/v1/catalog/manufacturers/` — список производителей
+- `GET /api/v1/catalog/manufacturers/{id}/` — карточка производителя
+- `GET /api/v1/catalog/banners/` — список баннеров
 
 ---
 
-## 1) Получить фильтры каталога
+## 5. Filters API
 
-**GET** `/api/v1/catalog/filters/`
+### `GET /api/v1/catalog/filters/`
 
-Возвращает дерево разделов, список производителей и набор фильтров по характеристикам товаров.
+Возвращает:
 
-### Разделы (sections)
+- `sections` — дерево разделов
+- `manufacturers` — список активных брендов + количество активных товаров в каждом (`count`)
+- `filters` — конфигурация фильтров для каталога
+- `sorting` — доступные варианты сортировки
 
-- Возвращается дерево категорий с вложенными `children`.
-- В `children` попадают только активные разделы (`is_active=True`).
-- Сортировка внутри одного родителя: сначала по `ordering`, затем по `name`.
-- Поле `description_main` — Описание раздела для главной страницы.
-- Поле `description` — подробное описание (текст).
+### sections (дерево)
 
-### Ответ
+- В корне только разделы: `is_active=true` и `parent=null`
+- В `children` попадают только активные дочерние разделы
+- Сортировка в каждом уровне: `ordering`, затем `name`
+- `count` у раздела = количество **активных** товаров в разделе + всех дочерних разделах
+
+Пример элемента раздела:
+
 ```json
 {
-  "sections": [
-    {
-      "id": 1,
-      "name": "Основные печи",
-      "slug": "main_oven",
-      "description_main": "",
-      "image": "/media/sections/images/main.png",
-      "browser_title": "",
-      "description": "",
-      "meta_description": "",
-      "meta_keywords": "",
-      "ordering": 1,
-      "children": [
-        {
-          "id": 2,
-          "name": "Дочерняя печь",
-          "slug": "child_oven",
-          "description_main": "",
-          "image": null,
-          "browser_title": "",
-          "description": "",
-          "meta_description": "",
-          "meta_keywords": "",
-          "ordering": 1,
-          "children": []
-        }
-      ]
-    }
-  ],
-  "manufacturers": [
-    { "id": 1, "name": "Plamen", "slug": "plamen", "logo": "/media/manufacturers/plamen.png", "priority": 10 },
-    { "id": 2, "name": "EasySteam", "slug": "easysteam", "logo": "/media/manufacturers/easysteam.png", "priority": 5 }
-  ],
-  "filters": {
-    "fuel_type": [
-      { "value": "gas", "label": "Газовая" },
-      { "value": "wood", "label": "Дровяная" }
-    ],
-    "purpose": [
-      { "value": "home", "label": "Для дома" },
-      { "value": "sauna_bath", "label": "Для сауны / бани" }
-    ]
-  }
+  "id": 1,
+  "name": "Основные печи",
+  "slug": "main_oven",
+  "description_main": "",
+  "image": "/media/sections/images/main.png",
+  "browser_title": "",
+  "description": "",
+  "meta_description": "",
+  "meta_keywords": "",
+  "ordering": 1,
+  "count": 12,
+  "children": []
 }
 ```
 
-Ключи в `filters`:
-`purpose`, `fuel_type`, `heated_volume`, `steam_room_volume`, `power_kw`,
-`firebox_material`, `firebox_type`, `installation_type`, `firebox_orientation`,
-`combustion_type`, `glass_count`, `fire_view`, `cladding_material`,
-`heater_type`, `stone_material`, `tank_type`, `door_mechanism`, `chimney_diameter`.
+### manufacturers в этом endpoint
 
----
+Поля:
 
-## 2) Каталог товаров (список)
+- `id`
+- `name`
+- `slug`
+- `logo`
+- `priority`
+- `count` — количество активных товаров бренда
 
-**GET** `/api/v1/catalog/products/`
+### sorting в этом endpoint
 
----
+Текущие варианты:
 
-### Query-параметры
+- `new` — сначала новые
+- `price_asc` — по возрастанию итоговой цены
+- `price_desc` — по убыванию итоговой цены
 
-* `search` — поиск по названию товара (регистронезависимый, частичное совпадение)
-* `section` — фильтр по разделам (можно несколько):
-  `section=1&section=2`
+Пример:
 
-  > Включает выбранные разделы **и все их дочерние категории**.
-* `manufacturer` — фильтр по производителям (можно несколько):
-  `manufacturer=1&manufacturer=2`
-* `price_from` — минимальная цена
-* `price_to` — максимальная цена
-* `discount` — только товары со скидкой (любое truthy-значение, например `1`)
-* `ordering` — сортировка:
-
-  * `popular` — сначала популярные
-  * `price_asc` — цена по возрастанию
-  * `price_desc` — цена по убыванию
-  * иначе можно сортировать по любому полю модели `Product`:
-    `ordering=price`, `ordering=-price`, `ordering=created_at` и т.д.
-  * дополнительно разрешены поля `final_price` и `has_video`
-  * если не задано — сортировка по `created_at` (сначала новые)
-* `page` — номер страницы (пагинация)
-
-> Важно: фильтрация по цене учитывает скидку.
-> Если `discount_price` заполнена — используется она, иначе обычная `price`.
-
-### Авто-фильтры по полям Product
-
-Можно фильтровать по **любому** полю модели `Product` (включая `fuel_type`,
-`purpose`, `installation_type`, `power_kw`, `chimney_diameter`, булевые поля и т.д.).
-
-Примеры:
-
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/?purpose=home&installation_type=wall&power_kw=kw_12"
-```
-
-Булевые параметры принимают значения `1/0`, `true/false`, `yes/no`, `on/off`.
-Неизвестные параметры запроса игнорируются.
-
----
-
-### Пример запроса
-
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/?section=1&manufacturer=2&fuel_type=wood&price_from=50000&price_to=150000&ordering=price_asc"
-```
-
----
-
-### Что возвращается
-
-Каждый элемент списка — краткое представление товара (preview):
-
-* базовые поля товара
-* главное изображение и галерея
-* признаки (`is_new`, `is_popular`, и т.д.)
-* `fuel_type_display` — человекочитаемое название топлива
-* `has_video` — наличие видеообзора
-* `sections` — breadcrumb-путь категории товара
-
----
-
-### ⚠️ Поле `sections`
-
-Поле `sections` содержит полный путь категории от корня до конечного раздела.
-
-Структура:
-
-```
-sections = [
-    [root_section, ..., leaf_section]
+```json
+[
+  { "value": "new", "label": "Сначала новые" },
+  { "value": "price_asc", "label": "Сначала дешёвые" },
+  { "value": "price_desc", "label": "Сначала дорогие" }
 ]
 ```
 
-Если товар относится к нескольким категориям — возвращается несколько путей.
+### filters в этом endpoint
 
-Это позволяет фронтенду строить breadcrumb без дополнительных запросов.
+`filters` — массив конфигов. Основные типы:
+
+- `range`
+- `select`
+- `boolean`
+
+Примеры:
+
+```json
+{
+  "field": "price",
+  "label": "Цена",
+  "type": "range",
+  "min": 10000,
+  "max": 300000,
+  "params": { "min": "price_from", "max": "price_to" }
+}
+```
+
+```json
+{
+  "field": "fuel_type",
+  "label": "Тип топлива",
+  "type": "select",
+  "options": [
+    { "value": "wood", "label": "Дровяная", "count": 10 },
+    { "value": "gas", "label": "Газовая", "count": 3 }
+  ]
+}
+```
+
+```json
+{
+  "field": "water_circuit",
+  "label": "Водяной контур",
+  "type": "boolean",
+  "count": 5
+}
+```
 
 ---
 
-### Ответ (пример)
+## 6. Products Catalog API
+
+### `GET /api/v1/catalog/products/`
+
+Список активных товаров (`is_active=true`).
+
+### 6.1 Поддерживаемые query-параметры
+
+#### Текстовый поиск
+
+- `search` — поиск по `name` (icontains)
+
+#### Мульти-фильтры
+
+Передаются повторением ключа:
+
+- `section=1&section=2`
+- `manufacturer=3&manufacturer=7`
+- `fuel_type=wood&fuel_type=gas`
+- аналогично для остальных `select`-полей
+
+#### Список select-полей
+
+- `fuel_type`
+- `heated_volume`
+- `lining_material`
+- `firebox_material`
+- `firebox_type`
+- `installation_type`
+- `glass_count`
+- `fire_view`
+- `heater_type`
+- `stone_material`
+- `tank_type`
+- `door_mechanism`
+- `chimney_connection`
+- `chimney_diameter`
+
+#### Boolean-поля
+
+- `water_circuit`
+- `long_fire`
+- `heat_exchanger`
+- `glass_lift`
+- `damper`
+- `cooking_panel`
+
+Поддерживаются обычные булевы значения (`true/false`, `1/0`, и т.д.).
+
+#### Range-поля
+
+- `price_from`, `price_to`
+- `power_kw_min`, `power_kw_max`
+- `steam_volume_from`, `steam_volume_to`
+
+#### Сортировка
+
+- `ordering=new`
+- `ordering=price_asc`
+- `ordering=price_desc`
+- если передано неизвестное значение, используется `new`
+
+### 6.2 Важная логика фильтрации
+
+- Фильтр по `section` включает выбранный раздел + всех его активных потомков
+- Фильтр по `manufacturer` возвращает товары только активных брендов
+- Цена фильтруется по `final_price`:
+  - если `discount_price` задана, используется она
+  - иначе используется `price`
+- Фильтр по `steam_volume_*` работает по пересечению диапазонов:
+  - `steam_volume_to >= steam_volume_from(query)`
+  - `steam_volume_from <= steam_volume_to(query)`
+- Неизвестные query-параметры игнорируются
+
+### 6.3 Пример запроса
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&manufacturer=2&fuel_type=wood&price_from=50000&price_to=150000&ordering=price_asc&page=1&page_size=9"
+```
+
+### 6.4 Структура элемента в `results`
+
+Поля:
+
+- `id`
+- `name`
+- `sections` — массив breadcrumb-путей
+- `manufacturer` — объект `{ "name": ... }`
+- `is_new`
+- `is_bestseller`
+- `has_video`
+- `price`
+- `discount_price`
+- `fuel_type`
+- `fuel_type_display`
+- `power_kw`
+- `images` — массив `{image, is_main, ordering}`
+
+Пример ответа:
 
 ```json
 {
@@ -268,41 +273,26 @@ sections = [
     {
       "id": 15,
       "name": "Тестовая печь",
+      "sections": [
+        [
+          { "id": 1, "name": "Основные печи", "slug": "main_oven" },
+          { "id": 2, "name": "Дровяные печи", "slug": "wood_oven" }
+        ]
+      ],
+      "manufacturer": { "name": "Harvia" },
       "is_new": false,
-      "is_popular": true,
-      "is_bestseller": false,
+      "is_bestseller": true,
       "has_video": true,
       "price": 100000,
       "discount_price": 90000,
       "fuel_type": "wood",
       "fuel_type_display": "Дровяная",
-      "power_kw": "kw_12",
-
-      "sections": [
-        [
-          {
-            "id": 1,
-            "name": "Основные печи",
-            "slug": "main_oven"
-          },
-          {
-            "id": 2,
-            "name": "Дровяные печи",
-            "slug": "wood_oven"
-          }
-        ]
-      ],
-
+      "power_kw": 12,
       "images": [
         {
-          "image": "http://127.0.0.1:8000/media/products/test.jpg",
+          "image": "http://127.0.0.1:8000/media/products/images/test.jpg",
           "is_main": true,
           "ordering": 0
-        },
-        {
-          "image": "http://127.0.0.1:8000/media/products/test1.jpg",
-          "is_main": false,
-          "ordering": 1
         }
       ]
     }
@@ -310,45 +300,65 @@ sections = [
 }
 ```
 
----
-## 3) Карточка товара (детально)
+### 6.5 Как читать `sections` в товарах
 
-**GET** `/api/v1/catalog/products/{id}/`
+`sections` — это не просто список категорий, а список путей (breadcrumb):
 
-### Что возвращается
-
-Возвращаются все поля модели `Product` + вложенные сущности:
-
-* `manufacturer` — объект `{id, name}`
-* `sections` — массив путей категорий (breadcrumb). Каждый элемент — полный путь раздела **от корня до конечной категории**, к которой привязан товар.
-* `images` — массив `{image, is_main, ordering}`
-* `documents` — массив `{title, file}`
-* `video_preview` — превью видео (URL) или `null`
-* Для всех полей с choices автоматически добавляется `<field>_display`
-  (например `fuel_type_display`, `combustion_type_display`, `power_kw_display`)
-
-### ⚠️ Поле `sections`
-
-Поле `sections` возвращает **не отдельные категории**, а их полный путь.
-
-Структура:
-
-```
+```text
 sections = [
-    [root_section, ..., leaf_section]
+  [root, ..., leaf],
+  [root2, ..., leaf2]
 ]
 ```
 
-Это сделано для построения breadcrumb-навигации без дополнительной логики на фронтенде.
+Если товар привязан к нескольким разделам, путей будет несколько.
 
-Если товар привязан к нескольким категориям — возвращается несколько путей.
+---
 
-### Пример запроса
+## 7. Product Detail API
+
+### `GET /api/v1/catalog/products/{id}/`
+
+Возвращает детальную карточку активного товара (`is_active=true`).
+
+Если товар не найден или неактивен: `404`.
+
+### 7.1 Что возвращается
+
+- Все поля модели `Product`
+- `manufacturer` в формате `{ id, name }`
+- `sections` в формате breadcrumb-путей
+- `images` — `{ image, is_main, ordering }`
+- `documents` — `{ title, file }`
+- Автоматически добавляются `*_display` для полей с `choices`
+
+### 7.2 Поля модели Product (текущий набор)
+
+- `id`, `name`, `slug`
+- `manufacturer`
+- `description`, `video_url`, `video_preview`
+- `price`, `discount_price`
+- `free_delivery`, `in_stock`, `is_active`, `is_new`, `is_bestseller`
+- `sku`, `series`
+- `heated_volume`, `power_kw`, `lining_material`, `fuel_type`, `firebox_material`, `firebox_type`, `installation_type`
+- `glass_count`, `fire_view`, `heater_type`, `water_circuit`, `stone_material`, `tank_type`, `door_mechanism`
+- `chimney_diameter`, `chimney_connection`
+- `dimensions`, `weight`
+- `steam_volume_from`, `steam_volume_to`
+- `stone_weight`, `closed_heater_volume`, `warranty_years`, `efficiency`
+- `long_fire`, `heat_exchanger`, `glass_lift`, `damper`, `cooking_panel`
+- `package_weight`
+- `seo_title`, `seo_description`, `seo_keywords`
+- `created_at`, `updated_at`
+
+### 7.3 Пример запроса
+
 ```bash
 curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
 ```
 
-### Ответ (пример)
+### 7.4 Пример ответа (сокращенный)
+
 ```json
 {
   "id": 15,
@@ -357,406 +367,210 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
   "manufacturer": { "id": 3, "name": "Harvia" },
   "sections": [
     [
-      {
-        "id": 1,
-        "name": "Основные печи",
-        "slug": "main_oven"
-      },
-      {
-        "id": 2,
-        "name": "Дровяные печи",
-        "slug": "wood_oven"
-      }
+      { "id": 1, "name": "Основные печи", "slug": "main_oven" },
+      { "id": 2, "name": "Дровяные печи", "slug": "wood_oven" }
     ]
   ],
-  "description": "Полное описание товара",
-  "video_url": "https://youtube.com/test",
-  "video_preview": "http://127.0.0.1:8000/media/products/video_previews/test.jpg",
   "price": 150000,
   "discount_price": 120000,
-  "price_in_euro": true,
-  "free_delivery": true,
-  "in_stock": true,
-  "is_active": true,
-  "is_popular": true,
-  "is_new": true,
-  "is_bestseller": true,
-  "sku": "SKU-123,SKU-456",
-  "series": "Premium",
-  "dimensions": "800x600x900",
-  "weight": 85,
-  "purpose": "home",
   "fuel_type": "wood",
-  "heated_volume": "100_150",
-  "steam_room_volume": "20_30",
-  "power_kw": "kw_14",
-  "firebox_material": "steel",
-  "firebox_type": "with_extension",
-  "installation_type": "corner",
-  "firebox_orientation": "horizontal",
-  "combustion_type": "long_burning",
-  "glass_count": "two",
-  "fire_view": "panoramic_glass",
-  "cladding_material": "stone",
-  "heater_type": "combined",
+  "fuel_type_display": "Дровяная",
+  "power_kw": 14,
   "water_circuit": true,
-  "stone_material": "natural",
-  "tank_type": "samovar",
-  "door_mechanism": "side_opening",
-  "chimney_diameter": "115",
-  "chimney_connection": "top",
-  "steam_volume_from": 10,
-  "steam_volume_to": 20,
-  "stone_weight": 90,
   "heat_exchanger": true,
-  "glass_lift": true,
-  "damper": true,
-  "cooking_panel": true,
-  "efficiency": 82,
-  "warranty_years": 5,
-  "closed_heater_volume": 30,
-  "package_weight": "95.50",
-  "seo_title": "SEO заголовок",
-  "seo_description": "SEO описание",
-  "seo_keywords": "печь, баня, harvia",
-  "created_at": "2026-02-14T10:15:30.123456+0000",
-  "updated_at": "2026-02-14T10:15:30.123456+0000",
   "images": [
     {
-      "image": "http://127.0.0.1:8000/media/products/test_main.jpg",
+      "image": "http://127.0.0.1:8000/media/products/images/test_main.jpg",
       "is_main": true,
       "ordering": 0
-    },
-    {
-      "image": "http://127.0.0.1:8000/media/products/test_2.jpg",
-      "is_main": false,
-      "ordering": 1
     }
   ],
   "documents": [
     {
       "title": "Инструкция",
-      "file": "http://127.0.0.1:8000/media/docs/manual.pdf"
-    },
-    {
-      "title": "Сертификат",
-      "file": "http://127.0.0.1:8000/media/docs/cert.pdf"
+      "file": "http://127.0.0.1:8000/media/products/documents/manual.pdf"
     }
-  ]
+  ],
+  "created_at": "2026-03-07T12:44:10.123456+0000",
+  "updated_at": "2026-03-07T12:44:10.123456+0000"
 }
 ```
 
 ---
 
-## 4) Портфолио
+## 8. Portfolio API
 
-### 4.1) Список портфолио
+### 8.1 `GET /api/v1/catalog/portfolio/`
 
-**GET** `/api/v1/catalog/portfolio/`
+Список портфолио, сортировка: новые сначала (`-created_at`).
 
-Возвращает портфолио с возможностью фильтрации по товару, разделу, производителю и признаку `main`.
+### 8.2 `GET /api/v1/catalog/products/{product_id}/portfolio/`
 
-### 4.2) Портфолио по товару
+Список портфолио конкретного товара.
 
-**GET** `/api/v1/catalog/products/{product_id}/portfolio/`
+### 8.3 Query-параметры (`/catalog/portfolio/`)
 
-Возвращает портфолио конкретного товара.
+- `product` — ID товара
+- `section` — ID раздела (включая дочерние)
+- `manufacturer` — ID производителя
+- `main=true` — только записи для главной
 
-### Query-параметры
+### 8.4 Пример
 
-* `product` — фильтр по товару (ID)
-* `section` — фильтр по разделу (ID)
-* `manufacturer` — фильтр по производителю (ID, можно несколько)
-* `main` — только для главной (`main=true`)
-
-### Что возвращается
-
-Каждое портфолио содержит:
-
-* `id`
-* `title` — название
-* `main` — выводить на главной
-* `duration` — срок работ (в днях)
-* `date` — дата работ
-* `object_type` — тип объекта
-* `price` — стоимость
-* `video_link` — ссылка на видео
-* `images` — список фото
-* `type_work` — тип работ
-* `product_id` — ID товара
-* `product_name` — название товара
-* `created_at` — дата создания
-
-Каждое изображение в `images` содержит:
-
-* `id`
-* `image` — ссылка на изображение
-* `order` — порядок отображения
-
-### Пример запроса
 ```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true"
+curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true&page=1&page_size=9"
 ```
 
-### Ответ (пример)
-```json
-{
-  "count": 2,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 10,
-      "title": "Монтаж печи",
-      "main": true,
-      "duration": 2,
-      "date": "2026-02-10",
-      "object_type": "Баня",
-      "price": 120000,
-      "video_link": "https://youtube.com/test",
-      "images": [
-        {
-          "id": 101,
-          "image": "http://127.0.0.1:8000/media/portfolio_image/p1.jpg",
-          "order": 0
-        },
-        {
-          "id": 102,
-          "image": "http://127.0.0.1:8000/media/portfolio_image/p1-2.jpg",
-          "order": 1
-        }
-      ],
-      "type_work": "Монтаж и подключение",
-      "product_id": 15,
-      "product_name": "Тестовая печь MAX PRO",
-      "created_at": "2026-02-20T12:10:30.123456+0000"
-    },
-    {
-      "id": 9,
-      "title": "Установка дымохода",
-      "main": true,
-      "duration": 1,
-      "date": "2026-02-08",
-      "object_type": "Дом",
-      "price": 80000,
-      "video_link": "",
-      "images": [
-        {
-          "id": 103,
-          "image": "http://127.0.0.1:8000/media/portfolio_image/p2.jpg",
-          "order": 0
-        }
-      ],
-      "type_work": "Монтаж",
-      "product_id": 15,
-      "product_name": "Тестовая печь MAX PRO",
-      "created_at": "2026-02-18T09:05:10.123456+0000"
-    }
-  ]
-}
-```
+### 8.5 Элемент в `results`
+
+- `id`
+- `title`
+- `main`
+- `duration`
+- `date`
+- `object_type`
+- `price`
+- `video_link`
+- `type_work`
+- `product_id`
+- `product_name`
+- `images` — `{id, image, order}`
+- `created_at`
 
 ---
 
-## 5) Отзывы
+## 9. Reviews API
 
-### 5.1) Список всех отзывов
+### 9.1 `GET /api/v1/catalog/reviews/`
 
-**GET** `/api/v1/catalog/reviews/`
+Список всех отзывов, сортировка по убыванию `created_at`.
 
-Возвращает все отзывы, отсортированные от новых к старым.
+### 9.2 `GET /api/v1/catalog/products/{product_id}/reviews/`
 
-### 5.2) Отзывы по товару
+Список отзывов товара.
 
-**GET** `/api/v1/catalog/products/{product_id}/reviews/`
+### 9.3 Пример
 
-Возвращает отзывы конкретного товара, отсортированные от новых к старым.
-
-### Что возвращается
-
-Каждый отзыв содержит:
-
-* `id`
-* `name` — название отзыва
-* `client_name` — имя клиента
-* `installation_time` — время, затраченное на монтаж
-* `location` — локация
-* `work_description` — что сделано
-* `price` — стоимость
-* `video_url` — ссылка на видео
-* `preview_image` — превью для видео (может быть `null`)
-* `product_id` — ID товара
-* `product_name` — название товара
-* `created_at` — дата создания
-
-### Пример запроса
 ```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/"
+curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/?page=1&page_size=9"
 ```
 
-### Ответ (пример)
-```json
-{
-  "count": 2,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 5,
-      "name": "Отзыв о монтаже",
-      "client_name": "Иван Петров",
-      "installation_time": "1 день",
-      "location": "Москва",
-      "work_description": "Установка печи и дымохода",
-      "price": 120000,
-      "video_url": "https://youtube.com/test",
-      "preview_image": "http://127.0.0.1:8000/media/reviews/video_preview/review-5.jpg",
-      "product_id": 15,
-      "product_name": "Тестовая печь MAX PRO",
-      "created_at": "2026-02-20T12:10:30.123456+0000"
-    },
-    {
-      "id": 4,
-      "name": "Отзыв о доставке",
-      "client_name": "Мария Иванова",
-      "installation_time": "2 дня",
-      "location": "Тверь",
-      "work_description": "Доставка и подключение",
-      "price": 90000,
-      "video_url": "https://youtube.com/test2",
-      "preview_image": null,
-      "product_id": 15,
-      "product_name": "Тестовая печь MAX PRO",
-      "created_at": "2026-02-18T09:05:10.123456+0000"
-    }
-  ]
-}
-```
+### 9.4 Элемент в `results`
+
+- `id`
+- `name`
+- `client_name`
+- `installation_time`
+- `location`
+- `work_description`
+- `price`
+- `video_url`
+- `preview_image`
+- `product_id`
+- `product_name`
+- `created_at`
 
 ---
 
-## 6) Производители
+## 10. Manufacturers API
 
-### 6.1) Список производителей
+### 10.1 `GET /api/v1/catalog/manufacturers/`
 
-**GET** `/api/v1/catalog/manufacturers/`
+Возвращает только активных производителей (`is_active=true`).
 
-Возвращает активные бренды, отсортированные по алфавиту.
+Query-параметры:
 
-### Query-параметры
+- `ordering=priority` — сортировка по `-priority`, затем `name`
+- без `ordering` — сортировка по `name`
 
-* `ordering` — сортировка:
-  * `priority` — по приоритету (больше → выше) и затем по названию
-  * если не задано — по алфавиту
+Поля элемента:
 
-### Что возвращается
+- `id`
+- `name`
+- `slug`
+- `logo`
+- `priority`
 
-Каждый производитель содержит:
+Пример:
 
-* `id`
-* `name`
-* `slug`
-* `logo` — ссылка на логотип
-* `priority` — приоритет отображения
-
-### Пример запроса
 ```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority"
+curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority&page=1&page_size=9"
 ```
 
-### Ответ (пример)
-```json
-{
-  "count": 2,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "id": 1,
-      "name": "Plamen",
-      "slug": "plamen",
-      "logo": "http://127.0.0.1:8000/media/manufacturers/plamen.png",
-      "priority": 10
-    },
-    {
-      "id": 2,
-      "name": "EasySteam",
-      "slug": "easysteam",
-      "logo": "http://127.0.0.1:8000/media/manufacturers/easysteam.png",
-      "priority": 5
-    }
-  ]
-}
-```
+### 10.2 `GET /api/v1/catalog/manufacturers/{id}/`
 
----
+Карточка конкретного активного производителя.
 
-### 6.2) Детальная карточка производителя
+Если `is_active=false` или id не найден: `404`.
 
-**GET** `/api/v1/catalog/manufacturers/{id}/`
+Поля:
 
-Возвращает данные производителя и галерею изображений.
+- `id`, `name`, `slug`, `is_active`, `logo`, `priority`
+- `seo_title`, `seo_description`, `seo_keywords`
+- `short_description`, `description`, `video`
+- `images` — `{id, image, ordering}`
 
-### Что возвращается
+Пример:
 
-* `id`
-* `name`
-* `slug`
-* `logo`
-* `priority`
-* `is_active` — активен/неактивен
-* `seo_title` — название страницы
-* `seo_description` — описание страницы
-* `seo_keywords` — SEO ключевые слова
-* `short_description` — краткое описание
-* `description` — полное описание
-* `video` — видео (строка/URL)
-* `images` — массив изображений производителя `{id, image, ordering}`
-
-### Пример запроса
 ```bash
 curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/3/"
 ```
 
-### Ответ (пример)
-```json
-{
-  "id": 3,
-  "name": "Harvia",
-  "slug": "harvia",
-  "is_active": true,
-  "logo": "http://127.0.0.1:8000/media/manufacturers/harvia.png",
-  "priority": 100,
-  "seo_title": "Harvia — печи для бани",
-  "seo_description": "Описание страницы бренда",
-  "seo_keywords": "печи, баня, harvia",
-  "short_description": "Финские печи для бани",
-  "description": "Полное описание бренда",
-  "video": "https://youtube.com/test",
-  "images": [
-    {
-      "id": 10,
-      "image": "http://127.0.0.1:8000/media/manufacturer_images/harvia_1.jpg",
-      "ordering": 0
-    },
-    {
-      "id": 11,
-      "image": "http://127.0.0.1:8000/media/manufacturer_images/harvia_2.jpg",
-      "ordering": 1
-    }
-  ]
-}
+---
+
+## 11. Banners API
+
+### `GET /api/v1/catalog/banners/`
+
+Query-параметры:
+
+- `section` — ID раздела
+- `brand` — ID производителя
+
+Логика:
+
+- если передан `section`, вернутся баннеры раздела + глобальные (без раздела)
+- если передан `brand`, вернутся баннеры бренда + глобальные (без бренда)
+- если переданы оба, применяются оба условия
+
+Поля элемента:
+
+- `id`
+- `title`
+- `image`
+
+Пример:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/banners/?section=1&brand=2&page=1&page_size=9"
 ```
 
 ---
 
-## Возможные ошибки
+## 12. Healthcheck
 
-- `404 Not Found` — товар не найден
-- `400 Bad Request` — некорректные параметры запроса
-- `500 Internal Server Error` — ошибка на сервере
+### `GET /api/v1/health/`
 
-Пример ошибки:
-```json
-{ "detail": "Not found." }
-```
+- `200`: `{ "status": "ok" }`
+- `503`: `{ "status": "db_error" }` (нет соединения с БД)
+
+---
+
+## 13. Ошибки и пограничные случаи
+
+- Не найден detail-объект: `404` + стандартный DRF ответ (`{"detail":"Not found."}`)
+- Невалидные значения фильтров каталога (например неизвестный choice): `400`
+- Неизвестные query-параметры в каталоге товаров: игнорируются
+- Для boolean-фильтров каталога ориентируйтесь на явную передачу параметров:
+  не отправляйте лишние boolean-ключи в query string, если не хотите фильтрацию по ним
+- Все list endpoint отдают paginated-структуру (`count/next/previous/results`)
+
+---
+
+## 14. Рекомендации для фронтенда
+
+1. Храните query state как объект фильтров и сериализуйте повторяющиеся параметры через повтор ключа (`field=a&field=b`).
+2. Для каталога используйте `/catalog/filters/` как единственный источник метаданных фильтрации и сортировок.
+3. Для хлебных крошек всегда используйте `sections` из ответа товара (там уже готовый путь).
+4. Всегда проверяйте `next` и `previous` для пагинации; не рассчитывайте количество страниц вручную.
+5. Для цены в карточках/листинге учитывайте `discount_price` как приоритетную цену показа.

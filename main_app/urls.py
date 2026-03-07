@@ -1,5 +1,6 @@
 from django.urls import path, include
 
+from main_app.views.banner import BannerListView
 from main_app.views.manufacturer import ManufacturerPreviewListView, ManufacturerDetailAPIView
 from main_app.views.portfolio import PortfolioListAPIView
 from main_app.views.product_detail import ProductDetailAPIView
@@ -25,6 +26,10 @@ catalog_patterns = [
     # бренды
     path("manufacturers/", ManufacturerPreviewListView.as_view(), name="catalog-manufacturers"),
     path("manufacturers/<int:id>/", ManufacturerDetailAPIView.as_view(), name="catalog-manufacturer-detail"),
+
+    # баннер
+    path("banners/", BannerListView.as_view(), name="banners"),
+
 ]
 
 urlpatterns = [

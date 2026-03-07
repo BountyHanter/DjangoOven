@@ -27,11 +27,6 @@ class ProductDetailSerializer(ChoicesDisplayMixin, serializers.ModelSerializer):
     images = ProductImageSerializer(many=True)
     documents = ProductDocumentSerializer(many=True)
 
-    fuel_type_display = serializers.CharField(
-        source="get_fuel_type_display",
-        read_only=True
-    )
-
     class Meta:
         model = Product
         fields = "__all__"

@@ -89,3 +89,9 @@ class PortfolioAdmin(admin.ModelAdmin):
 
     # ----- оптимизация запросов -----
     list_select_related = ("product",)
+
+    class Media:
+        js = ("admin/js/image_preview.js",)
+        css = {
+            "all": ("admin/css/image_preview.css",)
+        }

@@ -3,6 +3,11 @@ from rest_framework import serializers
 from main_app.models import Manufacturer
 
 class ManufacturerPreviewSerializer(serializers.ModelSerializer):
+    count = serializers.IntegerField(
+        source="product_count",
+        read_only=True
+    )
+
     class Meta:
         model = Manufacturer
         fields = (
@@ -11,6 +16,7 @@ class ManufacturerPreviewSerializer(serializers.ModelSerializer):
             "slug",
             "logo",
             "priority",
+            "count",
         )
 
 class ManufacturerImageSerializer(serializers.ModelSerializer):
