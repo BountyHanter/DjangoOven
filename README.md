@@ -18,7 +18,7 @@
 - `page` — номер страницы
 - `page_size` — размер страницы
 - `page_size` по умолчанию: `9`
-- `max page_size`: `100`
+- `max page_size`: `10000`
 
 Типовой ответ:
 
@@ -162,6 +162,14 @@
 }
 ```
 
+```json
+{
+  "field": "discount",
+  "label": "Со скидкой",
+  "type": "boolean"
+}
+```
+
 ---
 
 ## 6. Products Catalog API
@@ -210,6 +218,7 @@
 - `glass_lift`
 - `damper`
 - `cooking_panel`
+- `discount` (только товары с заполненным `discount_price`)
 
 Поддерживаются обычные булевы значения (`true/false`, `1/0`, и т.д.).
 
@@ -233,6 +242,7 @@
 - Цена фильтруется по `final_price`:
   - если `discount_price` задана, используется она
   - иначе используется `price`
+- `discount=true` возвращает только товары, где `discount_price` не `null`
 - Фильтр по `steam_volume_*` работает по пересечению диапазонов:
   - `steam_volume_to >= steam_volume_from(query)`
   - `steam_volume_from <= steam_volume_to(query)`
@@ -257,8 +267,6 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&m
 - `has_video`
 - `price`
 - `discount_price`
-- `fuel_type`
-- `fuel_type_display`
 - `power_kw`
 - `images` — массив `{image, is_main, ordering}`
 
@@ -285,8 +293,6 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&m
       "has_video": true,
       "price": 100000,
       "discount_price": 90000,
-      "fuel_type": "wood",
-      "fuel_type_display": "Дровяная",
       "power_kw": 12,
       "images": [
         {

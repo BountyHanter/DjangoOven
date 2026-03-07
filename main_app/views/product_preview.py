@@ -7,10 +7,6 @@ from main_app.serializers.product_preview import ProductPreviewSerializer
 from main_app.serializers.product_preview_filter import ProductFilterSerializer
 from main_app.views.utils.filter_helper import FILTER_FIELDS, DEFAULT_SORTING, SORTING_MAP
 
-SORT_PRICE_ASC = "price_asc"
-SORT_PRICE_DESC = "price_desc"
-
-
 class ProductCatalogAPIView(ListAPIView):
     permission_classes = [AllowAny]
     serializer_class = ProductPreviewSerializer
@@ -40,6 +36,12 @@ class ProductCatalogAPIView(ListAPIView):
                 output_field=DecimalField(max_digits=12, decimal_places=2)
             )
         )
+
+        # --- скидка ---
+        discount = filters.get("discount")
+
+        if discount:
+            queryset = queryset.filter(discount_price__isnull=False)
 
         # --- есть ли видео ---
         queryset = queryset.annotate(

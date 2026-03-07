@@ -255,6 +255,14 @@ def generate_filters():
 
     filters.insert(0, price_filter)
 
+    # ---------------- discount ----------------
+
+    filters.append({
+        "field": "discount",
+        "label": "Со скидкой",
+        "type": "boolean",
+    })
+
     # ---------------- steam volume ----------------
     filters.append({
         "field": "steam_volume",

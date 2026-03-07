@@ -28,11 +28,6 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
     has_video = serializers.BooleanField(read_only=True)
     sections = serializers.SerializerMethodField()
 
-    fuel_type_display = serializers.CharField(
-        source="get_fuel_type_display",
-        read_only=True
-    )
-
     class Meta:
         model = Product
         fields = (
@@ -45,8 +40,6 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "has_video",
             "price",
             "discount_price",
-            "fuel_type",
-            "fuel_type_display",
             "power_kw",
             "images",
         )

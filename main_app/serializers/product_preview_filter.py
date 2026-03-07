@@ -134,6 +134,7 @@ class ProductFilterSerializer(serializers.Serializer):
     glass_lift = serializers.BooleanField(required=False)
     damper = serializers.BooleanField(required=False)
     cooking_panel = serializers.BooleanField(required=False)
+    discount = serializers.BooleanField(required=False)
 
     # --- range ---
     price_from = serializers.IntegerField(required=False)
