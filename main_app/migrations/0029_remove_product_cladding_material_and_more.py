@@ -15,6 +15,14 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             """
             UPDATE main_app_product
+            SET power_kw = NULL
+            WHERE power_kw !~ '^[0-9]+(\\.[0-9]+)?$';
+            """
+        ),
+
+        migrations.RunSQL(
+            """
+            UPDATE main_app_product
             SET power_kw = ROUND(power_kw::numeric)
             WHERE power_kw IS NOT NULL;
             """
