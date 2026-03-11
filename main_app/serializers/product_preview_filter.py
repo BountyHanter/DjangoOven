@@ -128,8 +128,8 @@ class ProductFilterSerializer(serializers.Serializer):
     )
 
     # --- boolean ---
-    # QueryDict treats missing booleans as False by default in DRF.
-    # Keep omitted params as None so catalog isn't implicitly filtered.
+    # QueryDict по умолчанию трактует отсутствующие булевы значения как False в DRF.
+    # Сохраняем пропущенные параметры как None, чтобы каталог не фильтровался неявно.
     water_circuit = serializers.BooleanField(required=False, allow_null=True, default=None)
     long_fire = serializers.BooleanField(required=False, allow_null=True, default=None)
     heat_exchanger = serializers.BooleanField(required=False, allow_null=True, default=None)
