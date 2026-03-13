@@ -64,6 +64,8 @@ class Product(models.Model):
     )
 
     schema = models.FileField(
+        null=True,
+        blank=True,
         upload_to="products/schema/",
         verbose_name="Схема (формат pdf)",
     )
