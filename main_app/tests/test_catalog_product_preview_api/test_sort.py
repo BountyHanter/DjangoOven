@@ -62,3 +62,33 @@ def test_sort_products_by_new():
     names = [item["name"] for item in results]
 
     assert names[0] == "Новая печь"
+
+
+@pytest.mark.django_db
+def test_sort_products_by_popular():
+
+    client = APIClient()
+
+    Product.objects.create(
+        name="Обычная печь",
+        price=100,
+        is_bestseller=False,
+        is_active=True,
+    )
+    Product.objects.create(
+        name="Хит печь",
+        price=100,
+        is_bestseller=True,
+        is_active=True,
+    )
+
+    url = reverse("catalog-products")
+
+    response = client.get(url, {"ordering": "popular"})
+
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+    names = [item["name"] for item in results]
+
+    assert names[0] == "Хит печь"

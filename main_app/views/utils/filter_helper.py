@@ -63,6 +63,11 @@ SORTING_CONFIG = [
         "ordering": ["-created_at"],
     },
     {
+        "value": "popular",
+        "label": "Сначала популярные",
+        "ordering": ["-is_bestseller", "-created_at"],
+    },
+    {
         "value": "price_asc",
         "label": "Сначала дешёвые",
         "ordering": ["final_price", "-created_at"],
@@ -110,22 +115,26 @@ def build_choices(choices):
 
 def get_unique_values(field_name: str):
     """
-    Для строковых полей без choices
-    например chimney_diameter
+    Для полей без choices, где нужны уникальные значения из БД
+    (например chimney_diameter и heated_volume)
     """
-    values = (
+    queryset = (
         Product.objects
+        .filter(is_active=True)
         .exclude(**{f"{field_name}__isnull": True})
-        .exclude(**{field_name: ""})
-        .values_list(field_name, flat=True)
-        .distinct()
-        .order_by(field_name)
     )
+
+    field = Product._meta.get_field(field_name)
+
+    if isinstance(field, models.CharField):
+        queryset = queryset.exclude(**{field_name: ""})
+
+    values = queryset.values_list(field_name, flat=True).distinct().order_by(field_name)
 
     return [
         {
             "value": v,
-            "label": v,
+            "label": str(v),
         }
         for v in values
     ]
@@ -210,6 +219,21 @@ def generate_filters():
                 "label": label,
                 "type": "boolean",
                 "count": true_count,
+            })
+
+        # ---------------- select (unique values for integer) ----------------
+        elif field_name == "heated_volume":
+
+            options = get_unique_values(field_name)
+
+            for opt in options:
+                opt["count"] = counts.get(opt["value"], 0)
+
+            filters.append({
+                "field": field_name,
+                "label": label,
+                "type": "select",
+                "options": options,
             })
 
         # ---------------- range ----------------

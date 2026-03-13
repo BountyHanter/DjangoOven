@@ -67,8 +67,6 @@ def test_catalog_returns_products():
     assert item["name"] == "Тестовая печь"
     assert item["price"] == 100000
     assert item["discount_price"] == 90000
-    assert item["fuel_type"] == "wood"
-    assert item["fuel_type_display"] == "Дровяная"
     assert item["power_kw"] == 12
 
     assert len(item["images"]) == 1

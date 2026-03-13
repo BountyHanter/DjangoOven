@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from main_app.admin.forms.product import ProductAdminForm
+from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
 from main_app.models.product import Product, ProductImage, ProductDocument
 
 
@@ -25,6 +25,7 @@ class ProductImageInline(admin.TabularInline):
 
 class ProductDocumentInline(admin.TabularInline):
     model = ProductDocument
+    form = ProductDocumentInlineForm
     extra = 1
     fields = ("title", "file", "ordering")
     ordering = ("ordering",)
@@ -90,6 +91,7 @@ class ProductAdmin(admin.ModelAdmin):
                     "description",
                     "video_url",
                     "video_preview",
+                    "schema",
                 )
             },
         ),

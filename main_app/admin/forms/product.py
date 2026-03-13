@@ -1,7 +1,7 @@
 from django import forms
 
 from main_app.admin.fields.product import MultipleImageField
-from main_app.models import Product
+from main_app.models import Product, ProductDocument
 from django.forms.widgets import ClearableFileInput
 
 class MultipleClearableFileInput(ClearableFileInput):
@@ -17,3 +17,11 @@ class ProductAdminForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = "__all__"
+
+class ProductDocumentInlineForm(forms.ModelForm):
+    class Meta:
+        model = ProductDocument
+        fields = "__all__"
+        labels = {
+            "title": "Документы (jpeg, png, webp)",
+        }

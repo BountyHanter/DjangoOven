@@ -49,6 +49,7 @@ def test_catalog_filters_api():
         name="Печь A",
         price=10000,
         power_kw=10,
+        heated_volume=100,
         chimney_diameter="115",
         manufacturer=plamen,
         is_active=True,
@@ -58,6 +59,7 @@ def test_catalog_filters_api():
         name="Печь B",
         price=20000,
         power_kw=20,
+        heated_volume=150,
         chimney_diameter="120",
         manufacturer=easysteam,
         is_active=True,
@@ -67,6 +69,7 @@ def test_catalog_filters_api():
         name="Печь C",
         price=30000,
         power_kw=30,
+        heated_volume=100,
         chimney_diameter="115",
         manufacturer=plamen,
         is_active=True,
@@ -173,6 +176,28 @@ def test_catalog_filters_api():
     assert power_filter["params"]["min"] == "power_kw_min"
     assert power_filter["params"]["max"] == "power_kw_max"
 
+    # ---------------- HEATED VOLUME ----------------
+
+    heated_filter = next(
+        f for f in filters if f["field"] == "heated_volume"
+    )
+
+    assert heated_filter["type"] == "select"
+
+    heated_options = heated_filter["options"]
+
+    heated_values = [o["value"] for o in heated_options]
+
+    assert heated_values == [100, 150]
+
+    heated_counts = {
+        o["value"]: o["count"]
+        for o in heated_options
+    }
+
+    assert heated_counts[100] == 2
+    assert heated_counts[150] == 1
+
     # ---------------- SORTING ----------------
 
     assert "sorting" in data
@@ -185,5 +210,6 @@ def test_catalog_filters_api():
     sorting_values = [s["value"] for s in sorting]
 
     assert "new" in sorting_values
+    assert "popular" in sorting_values
     assert "price_asc" in sorting_values
     assert "price_desc" in sorting_values

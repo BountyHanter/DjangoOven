@@ -1,6 +1,5 @@
 from rest_framework import serializers
 from main_app.models.choices import (
-    HEATED_VOLUME_CHOICES,
     FIREBOX_MATERIAL_CHOICES,
     FIREBOX_TYPE_CHOICES,
     INSTALLATION_TYPE_CHOICES,
@@ -39,9 +38,7 @@ class ProductFilterSerializer(serializers.Serializer):
     )
 
     heated_volume = serializers.ListField(
-        child=serializers.ChoiceField(
-            choices=[c[0] for c in HEATED_VOLUME_CHOICES]
-        ),
+        child=serializers.IntegerField(),
         required=False
     )
 

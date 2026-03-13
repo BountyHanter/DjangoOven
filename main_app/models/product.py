@@ -63,6 +63,12 @@ class Product(models.Model):
         verbose_name="Превью видео",
     )
 
+    schema = models.FileField(
+        upload_to="products/schema/",
+        verbose_name="Схема (формат pdf)",
+    )
+
+
     # --- ЦЕНЫ ---
     price = models.PositiveIntegerField(
         verbose_name="Обычная цена",
@@ -115,9 +121,7 @@ class Product(models.Model):
         verbose_name="Серия товара",
     )
 
-    heated_volume = models.CharField(
-        max_length=32,
-        choices=HEATED_VOLUME_CHOICES,
+    heated_volume = models.PositiveIntegerField(
         null=True,
         blank=True,
         verbose_name="Площадь/объём отопления",
@@ -241,8 +245,8 @@ class Product(models.Model):
     dimensions = models.CharField(
         max_length=255,
         blank=True,
-        verbose_name="Габариты (Д×Г×В, мм)",
-        help_text="Формат: ДxГxВ в мм",
+        verbose_name="Габариты (Г*Ш*В, мм)",
+        help_text="Формат: Г*Ш*В в мм",
     )
 
     weight = models.PositiveIntegerField(
@@ -314,9 +318,7 @@ class Product(models.Model):
         verbose_name="Варочная панель",
     )
 
-    package_weight = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
+    package_weight = models.PositiveIntegerField(
         null=True,
         blank=True,
         verbose_name="Масса в упаковке, кг",

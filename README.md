@@ -107,6 +107,7 @@
 Текущие варианты:
 
 - `new` — сначала новые
+- `popular` — сначала популярное (`is_bestseller=true`), внутри по новизне
 - `price_asc` — по возрастанию итоговой цены
 - `price_desc` — по убыванию итоговой цены
 
@@ -115,6 +116,7 @@
 ```json
 [
   { "value": "new", "label": "Сначала новые" },
+  { "value": "popular", "label": "Сначала популярные" },
   { "value": "price_asc", "label": "Сначала дешёвые" },
   { "value": "price_desc", "label": "Сначала дорогие" }
 ]
@@ -152,6 +154,20 @@
   ]
 }
 ```
+
+```json
+{
+  "field": "heated_volume",
+  "label": "Площадь/объём отопления",
+  "type": "select",
+  "options": [
+    { "value": 100, "label": "100", "count": 7 },
+    { "value": 150, "label": "150", "count": 4 }
+  ]
+}
+```
+
+`heated_volume` формируется из уникальных значений в БД (только `is_active=true`), не из фиксированных `choices`.
 
 ```json
 {
@@ -231,6 +247,7 @@
 #### Сортировка
 
 - `ordering=new`
+- `ordering=popular`
 - `ordering=price_asc`
 - `ordering=price_desc`
 - если передано неизвестное значение, используется `new`
@@ -342,7 +359,7 @@ sections = [
 
 - `id`, `name`, `slug`
 - `manufacturer`
-- `description`, `video_url`, `video_preview`
+- `description`, `video_url`, `video_preview`, `schema`
 - `price`, `discount_price`
 - `free_delivery`, `in_stock`, `is_active`, `is_new`, `is_bestseller`
 - `sku`, `series`
