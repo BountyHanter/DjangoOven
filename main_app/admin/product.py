@@ -92,6 +92,7 @@ class ProductAdmin(admin.ModelAdmin):
                     "video_url",
                     "video_preview",
                     "schema",
+                    "url_for_parser"
                 )
             },
         ),
