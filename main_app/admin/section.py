@@ -19,21 +19,36 @@ class SectionAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
     ordering = ("parent__id", "ordering", "name")
 
-    fields = (
-        "name",
-        "slug",
-        "parent",
-        "description_main",
-        "image",
-        "image_preview",
-        "menu_name",
-        "browser_title",
-        "description",
-        "meta_description",
-        "meta_keywords",
-        "ordering",
-        "is_active",
+    fieldsets = (
+        (
+            "Основная информация",
+            {
+                "fields": (
+                    "name",
+                    "slug",
+                    "parent",
+                    "description_main",
+                    "image",
+                    "image_preview",
+                    "menu_name",
+                    "description",
+                    "ordering",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "SEO",
+            {
+                "fields": (
+                    "browser_title",
+                    "meta_description",
+                    "meta_keywords",
+                )
+            },
+        ),
     )
+
 
     readonly_fields = ("image_preview",)
 
