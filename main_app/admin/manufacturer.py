@@ -53,25 +53,42 @@ class ManufacturerAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-    fields = (
-        "name",
-        "slug",
-        "is_active",
-        "priority",
-
-        "logo",
-        "logo_preview",
-
-        "seo_title",
-        "seo_description",
-        "seo_keywords",
-
-        "short_description",
-        "description",
-        "video",
-
-        "created_at",
-        "updated_at",
+    fieldsets = (
+        (
+            "Основная информация",
+            {
+                "fields": (
+                    "name",
+                    "slug",
+                    "is_active",
+                    "priority",
+                    "logo",
+                    "logo_preview",
+                    "short_description",
+                    "description",
+                    "video",
+                )
+            },
+        ),
+        (
+            "SEO",
+            {
+                "fields": (
+                    "seo_title",
+                    "seo_description",
+                    "seo_keywords",
+                )
+            },
+        ),
+        (
+            "Служебные поля",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
     )
 
     class Media:
