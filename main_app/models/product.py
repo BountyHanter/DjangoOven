@@ -50,12 +50,6 @@ class Product(models.Model):
         verbose_name="Описание",
     )
 
-    url_for_parser = models.URLField(
-        blank=True,
-        null=True,
-        verbose_name="Ссылка для парсинга товара",
-    )
-
     video_url = models.TextField(
         blank=True,
         null=True,

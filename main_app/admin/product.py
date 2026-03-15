@@ -2,8 +2,26 @@ from django.contrib import admin
 from django.utils.html import format_html
 
 from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
+from main_app.models.parser import ParserResult
 from main_app.models.product import Product, ProductImage, ProductDocument
 
+class ParserResultInline(admin.StackedInline):
+    model = ParserResult
+    extra = 1
+    max_num = 1
+
+    fields = (
+        "url",
+        "status",
+        "processing_time",
+        "error_text",
+    )
+
+    readonly_fields = (
+        "status",
+        "processing_time",
+        "error_text",
+    )
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -35,7 +53,7 @@ class ProductDocumentInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
 
-    inlines = [ProductImageInline, ProductDocumentInline]
+    inlines = [ParserResultInline, ProductImageInline, ProductDocumentInline]
 
     filter_horizontal = ("sections",)
 
@@ -92,7 +110,6 @@ class ProductAdmin(admin.ModelAdmin):
                     "video_url",
                     "video_preview",
                     "schema",
-                    "url_for_parser"
                 )
             },
         ),
