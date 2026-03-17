@@ -17,7 +17,9 @@ class Banner(models.Model):
 
     link = models.URLField(
         max_length=255,
-        verbose_name="Ссылка"
+        verbose_name="Ссылка",
+        null=True,
+        blank=True
     )
 
     sections = models.ManyToManyField(
