@@ -7,6 +7,7 @@ class ParserResult(models.Model):
 
     class Status(models.IntegerChoices):
         OK = 200, "Успешно"
+        REDIRECT = 301, "Редирект (возможно ошибка)"
         BAD_REQUEST = 400, "Некорректный запрос"
         FORBIDDEN = 403, "Доступ запрещён / антибот"
         NOT_FOUND = 404, "Страница не найдена"

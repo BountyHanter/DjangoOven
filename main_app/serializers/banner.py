@@ -11,4 +11,5 @@ class BannerSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "image",
+            "link",
         ]

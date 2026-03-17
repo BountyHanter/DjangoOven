@@ -12,6 +12,12 @@ class Banner(models.Model):
     image = models.ImageField(
         upload_to="banners/",
         verbose_name="Картинка",
+        height_field="Минимум 992/220, а лучше 1984/440. Главное чтобы был формат 9/2.",
+    )
+
+    link = models.URLField(
+        max_length=255,
+        verbose_name="Ссылка"
     )
 
     sections = models.ManyToManyField(
