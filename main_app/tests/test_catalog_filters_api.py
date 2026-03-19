@@ -58,6 +58,7 @@ def test_catalog_filters_api():
     product_b = Product.objects.create(
         name="Печь B",
         price=20000,
+        discount_price=18000,
         power_kw=20,
         heated_volume=150,
         chimney_diameter="120",
@@ -197,6 +198,15 @@ def test_catalog_filters_api():
 
     assert heated_counts[100] == 2
     assert heated_counts[150] == 1
+
+    # ---------------- DISCOUNT ----------------
+
+    discount_filter = next(
+        f for f in filters if f["field"] == "discount"
+    )
+
+    assert discount_filter["type"] == "boolean"
+    assert discount_filter["count"] == 1
 
     # ---------------- SORTING ----------------
 

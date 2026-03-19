@@ -280,11 +280,16 @@ def generate_filters():
     filters.insert(0, price_filter)
 
     # ---------------- discount ----------------
+    discount_count = Product.objects.filter(
+        is_active=True,
+        discount_price__isnull=False,
+    ).count()
 
     filters.append({
         "field": "discount",
         "label": "Со скидкой",
         "type": "boolean",
+        "count": discount_count,
     })
 
     # ---------------- steam volume ----------------
