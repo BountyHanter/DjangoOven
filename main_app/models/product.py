@@ -320,10 +320,10 @@ class Product(models.Model):
         verbose_name="Варочная панель",
     )
 
-    package_weight = models.PositiveIntegerField(
+    oven_weight = models.PositiveIntegerField(
         null=True,
         blank=True,
-        verbose_name="Масса в упаковке, кг",
+        verbose_name="Вес печи, кг",
     )
 
     # --- SEO ---

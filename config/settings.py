@@ -357,7 +357,7 @@ LOGGING = {
         # Корневой логгер (используется по умолчанию)
         '': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': True,
         },
 

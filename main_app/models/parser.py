@@ -40,7 +40,7 @@ class ParserResult(models.Model):
         null=True,
     )
 
-    processing_time = models.DurationField(
+    processing_time = models.DateTimeField(
         "Время обработки",
         null=True,
         blank=True,

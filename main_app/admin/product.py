@@ -164,7 +164,7 @@ class ProductAdmin(admin.ModelAdmin):
                     "efficiency",
                     "dimensions",
                     "weight",
-                    "package_weight",
+                    "oven_weight",
                     "stone_weight",
                     "long_fire",
                     "heat_exchanger",
