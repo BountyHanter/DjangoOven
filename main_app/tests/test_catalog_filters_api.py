@@ -223,3 +223,40 @@ def test_catalog_filters_api():
     assert "popular" in sorting_values
     assert "price_asc" in sorting_values
     assert "price_desc" in sorting_values
+
+
+@pytest.mark.django_db
+def test_catalog_filters_manufacturers_default_order():
+    client = APIClient()
+
+    Manufacturer.objects.create(
+        name="Печи Мальника",
+        slug="malnik",
+        is_active=True,
+    )
+    Manufacturer.objects.create(
+        name="3Thermo",
+        slug="3thermo",
+        is_active=True,
+    )
+    Manufacturer.objects.create(
+        name="Zota",
+        slug="zota",
+        is_active=True,
+    )
+    Manufacturer.objects.create(
+        name="Везувий",
+        slug="vezuviy",
+        is_active=True,
+    )
+
+    response = client.get(reverse("catalog-filters"))
+    assert response.status_code == 200
+
+    names = [m["name"] for m in response.json()["manufacturers"]]
+    assert names == [
+        "Печи Мальника",
+        "3Thermo",
+        "Zota",
+        "Везувий",
+    ]

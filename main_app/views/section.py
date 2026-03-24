@@ -8,6 +8,7 @@ from main_app.models.section import Section
 from main_app.views.utils.filter_helper import generate_filters, SORTING_OPTIONS
 from main_app.serializers.manufacturer import ManufacturerPreviewSerializer
 from main_app.serializers.section import SectionTreeSerializer
+from main_app.views.utils.manufacturer_sort import sort_manufacturers
 
 
 class CatalogFiltersAPIView(APIView):
@@ -31,6 +32,7 @@ class CatalogFiltersAPIView(APIView):
                 )
             )
         )
+        manufacturers = sort_manufacturers(manufacturers)
 
         return Response({
             "sections": SectionTreeSerializer(sections, many=True).data,

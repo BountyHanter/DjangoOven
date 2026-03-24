@@ -3,6 +3,7 @@ from rest_framework.permissions import AllowAny
 
 from main_app.models import Manufacturer
 from main_app.serializers.manufacturer import ManufacturerPreviewSerializer, ManufacturerDetailSerializer
+from main_app.views.utils.manufacturer_sort import sort_manufacturers
 
 
 class ManufacturerPreviewListView(ListAPIView):
@@ -18,8 +19,7 @@ class ManufacturerPreviewListView(ListAPIView):
         if ordering == "priority":
             return queryset.order_by("-priority", "name")
 
-        # сортировка по алфавиту (по умолчанию)
-        return queryset.order_by("name")
+        return sort_manufacturers(queryset)
 
 
 class ManufacturerDetailAPIView(RetrieveAPIView):

@@ -12,16 +12,35 @@ def test_get_manufacturers_list_default_order():
     """
     Проверяем:
     - список брендов отдаётся
-    - по умолчанию сортировка по имени (alphabetical)
+    - первым всегда идёт "Печи Мальника"
+    - затем порядок: цифры -> латиница -> кириллица
     """
 
     client = APIClient()
 
     Manufacturer.objects.create(
-        name="Zota",
-        logo="manufacturers/z.jpg",
+        name="Zeta",
+        logo="manufacturers/1.jpg",
         is_active=True,
-        slug="zota",
+        slug="zeta",
+    )
+    Manufacturer.objects.create(
+        name="2Banya",
+        logo="manufacturers/2.jpg",
+        is_active=True,
+        slug="2banya",
+    )
+    Manufacturer.objects.create(
+        name="Печи Мальника",
+        logo="manufacturers/m.jpg",
+        is_active=True,
+        slug="malnik",
+    )
+    Manufacturer.objects.create(
+        name="Атмосфера",
+        logo="manufacturers/a.jpg",
+        is_active=True,
+        slug="atmosfera",
     )
     Manufacturer.objects.create(
         name="Harvia",
@@ -32,14 +51,20 @@ def test_get_manufacturers_list_default_order():
 
     url = reverse("catalog-manufacturers")
     response = client.get(url)
+    print(json.dumps(response.json(), indent=4, ensure_ascii=False))
 
     assert response.status_code == 200
 
     results = response.json()["results"]
+    names = [item["name"] for item in results]
 
-    # alphabetical order
-    assert results[0]["name"] == "Harvia"
-    assert results[1]["name"] == "Zota"
+    assert names == [
+        "Печи Мальника",
+        "2Banya",
+        "Harvia",
+        "Zeta",
+        "Атмосфера",
+    ]
 
 
 @pytest.mark.django_db
