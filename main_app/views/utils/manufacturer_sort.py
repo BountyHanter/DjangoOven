@@ -1,4 +1,4 @@
-PINNED_MANUFACTURER_NAME = "Печи Мальника"
+PINNED_MANUFACTURER_NAME = "Печи Мельника"
 
 
 def _manufacturer_group(name: str) -> int:
