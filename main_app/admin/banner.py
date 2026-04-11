@@ -38,6 +38,7 @@ class BannerAdmin(admin.ModelAdmin):
         "title",
         "manufacturer",
         "sections",
+        "link",
         "image",
         "image_preview",
         "created_at",
