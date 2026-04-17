@@ -485,6 +485,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/?page=1&page_size
 - `client_name`
 - `installation_time`
 - `location`
+- `date`
 - `work_description`
 - `price`
 - `video_url`
