@@ -52,6 +52,12 @@ class Review(models.Model):
         verbose_name="Продукт"
     )
 
+    date = models.DateField(
+        verbose_name="Дата монтажа",
+        null=True,
+        blank=True,
+    )
+
 
     created_at = models.DateTimeField(auto_now_add=True)
 

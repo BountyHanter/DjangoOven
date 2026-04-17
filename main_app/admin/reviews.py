@@ -43,6 +43,7 @@ class ReviewAdmin(admin.ModelAdmin):
         "product",
         "installation_time",
         "location",
+        "date",
         "work_description",
         "price",
         "video_url",
