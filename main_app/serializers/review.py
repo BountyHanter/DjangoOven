@@ -23,6 +23,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             "installation_time",
             "location",
             "date",
+            "work_description",
             "price",
             "video_url",
             "preview_image",
