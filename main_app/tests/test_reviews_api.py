@@ -49,16 +49,17 @@ def test_get_reviews_by_product():
         installation_time="1 день",
         location="Москва",
         work_description="Описание работ",
+        date="2024-01-15",
         price=1000,
         video_url="video",
         product=product1,
     )
-
     Review.objects.create(
         name="Отзыв 2",
         client_name="Клиент 2",
         installation_time="1 день",
         location="Москва",
+        date="2024-01-16",
         work_description="Описание работ",
         price=1000,
         video_url="video",
@@ -70,6 +71,7 @@ def test_get_reviews_by_product():
         client_name="Клиент 3",
         installation_time="1 день",
         location="Москва",
+        date="2024-01-17",
         work_description="Описание работ",
         price=1000,
         video_url="video",
