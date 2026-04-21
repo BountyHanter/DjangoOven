@@ -74,6 +74,7 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     list_filter = (
+        "sections",
         "manufacturer",
         "fuel_type",
         "heated_volume",

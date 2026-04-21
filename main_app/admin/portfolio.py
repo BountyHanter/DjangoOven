@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
+from main_app.admin.forms.portfolio import PortfolioAdminForm
 from main_app.models import Portfolio, PortfolioImage
 
 class PortfolioImageInline(admin.TabularInline):
@@ -22,6 +23,7 @@ class PortfolioImageInline(admin.TabularInline):
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
+    form = PortfolioAdminForm
 
     # ----- inline галерея -----
     inlines = [PortfolioImageInline]
@@ -36,6 +38,26 @@ class PortfolioAdmin(admin.ModelAdmin):
             )
         return "Нет изображения"
 
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+        images = form.cleaned_data.get("images") or []
+
+        if not images:
+            return
+
+        start_order = (
+            obj.images.order_by("-order").first().order + 1
+            if obj.images.exists()
+            else 0
+        )
+
+        for i, image in enumerate(images, start=start_order):
+            PortfolioImage.objects.create(
+                portfolio=obj,
+                image=image,
+                order=i,
+            )
     preview.short_description = "Превью"
 
     # ----- список -----
@@ -57,18 +79,44 @@ class PortfolioAdmin(admin.ModelAdmin):
     )
 
     # ----- порядок полей формы -----
-    fields = (
-        "title",
-        "product",
-        "main",
-        "duration",
-        "date",
-        "object_type",
-        "price",
-        "video_link",
-        "preview",
-        "type_work",
-        "created_at",
+    fieldsets = (
+
+        (
+            "Основная информация",
+            {
+                "fields": (
+                    "title",
+                    "product",
+                    "main",
+                    "duration",
+                    "date",
+                    "object_type",
+                    "price",
+                    "video_link",
+                    "type_work",
+                )
+            },
+        ),
+
+        (
+            "Превью",
+            {
+                "fields": (
+                    "preview",
+                    "created_at",
+                )
+            },
+        ),
+
+        (
+            "Загрузить множество изображений",
+            {
+                "fields": (
+                    "images",
+                )
+            },
+        ),
+
     )
 
     # ----- фильтры -----
