@@ -23,6 +23,7 @@ class PortfolioImageInline(admin.TabularInline):
 
 @admin.register(Portfolio)
 class PortfolioAdmin(admin.ModelAdmin):
+    autocomplete_fields = ("product",)
     form = PortfolioAdminForm
 
     # ----- inline галерея -----
