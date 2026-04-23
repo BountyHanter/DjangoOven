@@ -102,8 +102,8 @@ class ManufacturerImage(models.Model):
     )
 
     class Meta:
-        verbose_name = "Фото производителя"
-        verbose_name_plural = "Фото производителей"
+        verbose_name = "Фото раздела"
+        verbose_name_plural = "Фото разделов"
         ordering = ["ordering"]
 
     def __str__(self):
