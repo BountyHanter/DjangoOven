@@ -87,8 +87,13 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
         for section_id in section_ids:
             path = []
             node_id = section_id
+            visited_ids = set()
 
             while node_id:
+                if node_id in visited_ids:
+                    break
+                visited_ids.add(node_id)
+
                 node = sections_by_id.get(node_id)
                 if node is None:
                     break
