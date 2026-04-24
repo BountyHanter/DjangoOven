@@ -24,7 +24,7 @@ class ProductCatalogAPIView(ListAPIView):
             .select_related("manufacturer")
             .prefetch_related(
                 "images",
-                "sections__parent",
+                "sections",
             )
         )
 
