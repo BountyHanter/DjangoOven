@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
 
@@ -102,9 +103,16 @@ class Section(models.Model):
     def get_depth(self) -> int:
         depth = 0
         parent = self.parent
+        visited = set()
+
         while parent:
+            if parent.id in visited:
+                break
+            visited.add(parent.id)
+
             depth += 1
             parent = parent.parent
+
         return depth
 
     def get_indent(self) -> str:
@@ -113,8 +121,13 @@ class Section(models.Model):
     def get_path(self):
         path = []
         node = self
+        visited = set()
 
         while node:
+            if node.id in visited:
+                break
+            visited.add(node.id)
+
             path.append(node)
             node = node.parent
 
@@ -122,16 +135,40 @@ class Section(models.Model):
 
     def get_descendants(self, include_self=True):
         nodes = [self] if include_self else []
+        visited = {self.id}
 
-        for child in self.children.all():
-            nodes.extend(child.get_descendants(include_self=True))
+        def dfs(node):
+            for child in node.children.all():
+                if child.id in visited:
+                    continue
+                visited.add(child.id)
 
+                nodes.append(child)
+                dfs(child)
+
+        dfs(self)
         return nodes
 
     def get_descendants_ids(self, include_self=True):
         return [s.id for s in self.get_descendants(include_self)]
 
     def save(self, *args, **kwargs):
+        self.full_clean()
+
         if not self.slug:
             self.slug = slugify(self.name)
+
         super().save(*args, **kwargs)
+
+    def clean(self):
+        parent = self.parent
+        visited = set()
+
+        if self.id:
+            visited.add(self.id)
+
+        while parent:
+            if parent.id in visited:
+                raise ValidationError("Нельзя создавать циклическую иерархию разделов")
+            visited.add(parent.id)
+            parent = parent.parent
