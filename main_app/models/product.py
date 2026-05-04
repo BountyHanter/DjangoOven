@@ -326,6 +326,11 @@ class Product(models.Model):
         verbose_name="Вес печи, кг",
     )
 
+    oven = models.BooleanField(
+        default=False,
+        verbose_name="Духовка"
+    )
+
     # --- SEO ---
     seo_title = models.CharField(
         max_length=255,

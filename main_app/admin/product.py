@@ -173,6 +173,7 @@ class ProductAdmin(admin.ModelAdmin):
                     "water_circuit",
                     "damper",
                     "cooking_panel",
+                    "oven",
                 )
             },
         ),

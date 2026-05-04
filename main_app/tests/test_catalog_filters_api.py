@@ -59,6 +59,7 @@ def test_catalog_filters_api():
         name="Печь B",
         price=20000,
         discount_price=18000,
+        oven=True,
         power_kw=20,
         heated_volume=150,
         chimney_diameter="120",
@@ -208,6 +209,15 @@ def test_catalog_filters_api():
     assert discount_filter["type"] == "boolean"
     assert discount_filter["count"] == 1
 
+    # ---------------- OVEN ----------------
+
+    oven_filter = next(
+        f for f in filters if f["field"] == "oven"
+    )
+
+    assert oven_filter["type"] == "boolean"
+    assert oven_filter["count"] == 1
+
     # ---------------- SORTING ----------------
 
     assert "sorting" in data
@@ -255,8 +265,8 @@ def test_catalog_filters_manufacturers_default_order():
 
     names = [m["name"] for m in response.json()["manufacturers"]]
     assert names == [
-        "Печи Мальника",
         "3Thermo",
         "Zota",
         "Везувий",
+        "Печи Мальника",
     ]

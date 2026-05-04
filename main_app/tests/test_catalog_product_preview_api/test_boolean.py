@@ -38,6 +38,39 @@ def test_filter_products_by_boolean_field():
 
 
 @pytest.mark.django_db
+def test_filter_products_by_oven_field():
+
+    client = APIClient()
+
+    Product.objects.create(
+        name="Печь с духовкой",
+        price=10000,
+        oven=True,
+        is_active=True,
+    )
+
+    Product.objects.create(
+        name="Печь без духовки",
+        price=10000,
+        oven=False,
+        is_active=True,
+    )
+
+    url = reverse("catalog-products")
+
+    response = client.get(url, {
+        "oven": True
+    })
+
+    assert response.status_code == 200
+
+    results = response.json()["results"]
+
+    assert len(results) == 1
+    assert results[0]["name"] == "Печь с духовкой"
+
+
+@pytest.mark.django_db
 def test_missing_boolean_params_do_not_apply_false_filters():
 
     client = APIClient()

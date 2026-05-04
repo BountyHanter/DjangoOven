@@ -12,8 +12,8 @@ def test_get_manufacturers_list_default_order():
     """
     Проверяем:
     - список брендов отдаётся
-    - первым всегда идёт "Печи Мальника"
-    - затем порядок: цифры -> латиница -> кириллица
+    - порядок по умолчанию: цифры -> латиница -> кириллица
+    - внутри группы сортировка по имени
     """
 
     client = APIClient()
@@ -59,11 +59,11 @@ def test_get_manufacturers_list_default_order():
     names = [item["name"] for item in results]
 
     assert names == [
-        "Печи Мальника",
         "2Banya",
         "Harvia",
         "Zeta",
         "Атмосфера",
+        "Печи Мальника",
     ]
 
 

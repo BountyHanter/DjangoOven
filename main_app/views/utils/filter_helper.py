@@ -34,6 +34,7 @@ FILTER_FIELDS = [
     "glass_lift",
     "damper",
     "cooking_panel",
+    "oven",
     "power_kw",
     "steam_volume",
 ]
