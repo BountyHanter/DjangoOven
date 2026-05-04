@@ -234,6 +234,7 @@
 - `glass_lift`
 - `damper`
 - `cooking_panel`
+- `oven`
 - `discount` (только товары с заполненным `discount_price`)
 
 Поддерживаются обычные булевы значения (`true/false`, `1/0`, и т.д.).
@@ -370,7 +371,7 @@ sections = [
 - `steam_volume_from`, `steam_volume_to`
 - `stone_weight`, `closed_heater_volume`, `warranty_years`, `efficiency`
 - `long_fire`, `heat_exchanger`, `glass_lift`, `damper`, `cooking_panel`
-- `package_weight`
+- `oven_weight`, `oven`
 - `seo_title`, `seo_description`, `seo_keywords`
 - `created_at`, `updated_at`
 
@@ -505,7 +506,10 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/?page=1&page_size
 Query-параметры:
 
 - `ordering=priority` — сортировка по `-priority`, затем `name`
-- без `ordering` — сортировка по `name`
+- без `ordering` — кастомная сортировка:
+  - сначала бренд с именем `Печи Мельника` (если есть),
+  - затем группы: `цифры -> латиница -> кириллица -> прочее`,
+  - внутри группы: по `name` (case-insensitive).
 
 Поля элемента:
 
