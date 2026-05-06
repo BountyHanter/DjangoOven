@@ -1,0 +1,79 @@
+import logging
+import socket
+
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives, get_connection
+
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_email_timeout(default=10):
+    raw_timeout = getattr(settings, "EMAIL_TIMEOUT", default)
+
+    if raw_timeout in (None, ""):
+        logger.warning(
+            "EMAIL_TIMEOUT пустой, используется значение по умолчанию",
+            extra={"email_timeout_default": default},
+        )
+        return default
+
+    try:
+        timeout = int(raw_timeout)
+    except (TypeError, ValueError):
+        logger.warning(
+            "EMAIL_TIMEOUT невалидный, используется значение по умолчанию",
+            extra={"email_timeout_raw": raw_timeout, "email_timeout_default": default},
+        )
+        return default
+
+    if timeout <= 0:
+        logger.warning(
+            "EMAIL_TIMEOUT должен быть > 0, используется значение по умолчанию",
+            extra={"email_timeout_raw": raw_timeout, "email_timeout_default": default},
+        )
+        return default
+
+    return timeout
+
+
+def send_email(subject, to, text_content, html_content):
+    timeout = _resolve_email_timeout(default=10)
+
+    try:
+        connection = get_connection(timeout=timeout)
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text_content,
+            from_email=settings.EMAIL_HOST_USER,
+            to=[to],
+            connection=connection,
+        )
+        email.attach_alternative(html_content, "text/html")
+        sent_count = email.send()
+
+        if sent_count < 1:
+            logger.error(
+                "Письмо не отправлено: сервер не принял ни одного получателя",
+                extra={"to": to, "subject": subject, "timeout": timeout},
+            )
+            raise RuntimeError("Письмо не было отправлено")
+
+        logger.info(
+            "Письмо успешно отправлено",
+            extra={"to": to, "subject": subject, "timeout": timeout},
+        )
+
+    except socket.timeout:
+        logger.exception(
+            "Таймаут SMTP при отправке письма",
+            extra={"to": to, "subject": subject, "timeout": timeout},
+        )
+        raise
+
+    except Exception:
+        logger.exception(
+            "Непредвиденная ошибка при отправке письма",
+            extra={"to": to, "subject": subject, "timeout": timeout},
+        )
+        raise

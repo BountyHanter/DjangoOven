@@ -282,6 +282,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # На случай если будет кастомный юзер
 # AUTH_USER_MODEL = 'users.CustomUser'
 
+### EMAIL
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.getenv("EMAIL_HOST")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+EMAIL_USE_SSL = True
+
+
 
 # ==============================
 # Папка для логов

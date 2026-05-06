@@ -1,6 +1,7 @@
 from django.urls import path, include
 
 from main_app.views.banner import BannerListView
+from main_app.views.email import SendEmailRequestView
 from main_app.views.manufacturer import ManufacturerPreviewListView, ManufacturerDetailAPIView
 from main_app.views.portfolio import PortfolioListAPIView
 from main_app.views.product_detail import ProductDetailAPIView
@@ -33,5 +34,7 @@ catalog_patterns = [
 ]
 
 urlpatterns = [
+    path("send-email-request/", SendEmailRequestView.as_view(), name="send-request"),
+
     path("catalog/", include(catalog_patterns)),
 ]
