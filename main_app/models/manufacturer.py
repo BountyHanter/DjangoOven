@@ -42,12 +42,6 @@ class Manufacturer(models.Model):
         verbose_name="Ключевые слова",
     )
 
-    short_description = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Краткое описание",
-    )
-
     description = models.TextField(
         blank=True,
         verbose_name="Полное описание",

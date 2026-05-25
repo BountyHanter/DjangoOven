@@ -3,7 +3,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from main_app.models import Manufacturer
+from main_app.models import Manufacturer, Product
 from main_app.models.section import Section
 from main_app.views.utils.filter_helper import generate_filters, SORTING_OPTIONS
 from main_app.serializers.manufacturer import ManufacturerPreviewSerializer
@@ -22,20 +22,37 @@ class CatalogFiltersAPIView(APIView):
             .order_by("ordering", "name")
         )
 
+        not_empty_sections = []
+
+        for section in sections:
+            section_ids = section.get_descendants_ids()
+
+            has_products = (
+                Product.objects
+                .filter(
+                    is_active=True,
+                    sections__id__in=section_ids,
+                )
+                .exists()
+            )
+
+            if has_products:
+                not_empty_sections.append(section)
+
         manufacturers = (
             Manufacturer.objects
             .filter(is_active=True)
             .annotate(
                 product_count=Count(
                     "product",
-                    filter=Q(product__is_active=True)
+                    filter=Q(product__is_active=True),
                 )
             )
         )
         manufacturers = sort_manufacturers(manufacturers)
 
         return Response({
-            "sections": SectionTreeSerializer(sections, many=True).data,
+            "sections": SectionTreeSerializer(not_empty_sections, many=True).data,
             "manufacturers": ManufacturerPreviewSerializer(manufacturers, many=True).data,
             "filters": generate_filters(),
             "sorting": SORTING_OPTIONS,

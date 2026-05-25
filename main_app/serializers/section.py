@@ -42,8 +42,27 @@ class SectionTreeSerializer(serializers.ModelSerializer):
 
     def get_children(self, obj):
 
-        children = obj.children.filter(
-            is_active=True
-        ).order_by("ordering", "name")
+        children = (
+            obj.children
+            .filter(is_active=True)
+            .order_by("ordering", "name")
+        )
 
-        return SectionTreeSerializer(children, many=True).data
+        not_empty_children = []
+
+        for child in children:
+            section_ids = child.get_descendants_ids()
+
+            has_products = (
+                Product.objects
+                .filter(
+                    is_active=True,
+                    sections__id__in=section_ids,
+                )
+                .exists()
+            )
+
+            if has_products:
+                not_empty_children.append(child)
+
+        return SectionTreeSerializer(not_empty_children, many=True).data

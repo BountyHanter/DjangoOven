@@ -47,7 +47,6 @@ class ManufacturerDetailSerializer(serializers.ModelSerializer):
             "seo_keywords",
 
             # контент
-            "short_description",
             "description",
             "video",
 

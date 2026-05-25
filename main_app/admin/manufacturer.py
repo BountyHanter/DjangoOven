@@ -64,7 +64,6 @@ class ManufacturerAdmin(admin.ModelAdmin):
                     "priority",
                     "logo",
                     "logo_preview",
-                    "short_description",
                     "description",
                     "video",
                 )
