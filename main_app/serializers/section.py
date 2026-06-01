@@ -1,4 +1,3 @@
-from django.db.models import Count, Q
 from rest_framework import serializers
 
 from main_app.models import Product
@@ -29,12 +28,15 @@ class SectionTreeSerializer(serializers.ModelSerializer):
     def get_count(self, obj):
 
         section_ids = obj.get_descendants_ids()
+        products_queryset = self.context.get(
+            "products_queryset",
+            Product.objects.filter(is_active=True),
+        )
 
         return (
-            Product.objects
+            products_queryset
             .filter(
-                is_active=True,
-                sections__id__in=section_ids
+                sections__id__in=section_ids,
             )
             .distinct()
             .count()
@@ -49,14 +51,17 @@ class SectionTreeSerializer(serializers.ModelSerializer):
         )
 
         not_empty_children = []
+        products_queryset = self.context.get(
+            "products_queryset",
+            Product.objects.filter(is_active=True),
+        )
 
         for child in children:
             section_ids = child.get_descendants_ids()
 
             has_products = (
-                Product.objects
+                products_queryset
                 .filter(
-                    is_active=True,
                     sections__id__in=section_ids,
                 )
                 .exists()
@@ -65,4 +70,8 @@ class SectionTreeSerializer(serializers.ModelSerializer):
             if has_products:
                 not_empty_children.append(child)
 
-        return SectionTreeSerializer(not_empty_children, many=True).data
+        return SectionTreeSerializer(
+            not_empty_children,
+            many=True,
+            context=self.context,
+        ).data

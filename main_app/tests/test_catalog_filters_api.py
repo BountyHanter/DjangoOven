@@ -239,26 +239,34 @@ def test_catalog_filters_api():
 def test_catalog_filters_manufacturers_default_order():
     client = APIClient()
 
-    Manufacturer.objects.create(
+    malnik = Manufacturer.objects.create(
         name="Печи Мальника",
         slug="malnik",
         is_active=True,
     )
-    Manufacturer.objects.create(
+    thermo = Manufacturer.objects.create(
         name="3Thermo",
         slug="3thermo",
         is_active=True,
     )
-    Manufacturer.objects.create(
+    zota = Manufacturer.objects.create(
         name="Zota",
         slug="zota",
         is_active=True,
     )
-    Manufacturer.objects.create(
+    vezuviy = Manufacturer.objects.create(
         name="Везувий",
         slug="vezuviy",
         is_active=True,
     )
+
+    for manufacturer in [malnik, thermo, zota, vezuviy]:
+        Product.objects.create(
+            name=f"Печь {manufacturer.name}",
+            price=10000,
+            manufacturer=manufacturer,
+            is_active=True,
+        )
 
     response = client.get(reverse("catalog-filters"))
     assert response.status_code == 200
@@ -270,3 +278,94 @@ def test_catalog_filters_manufacturers_default_order():
         "Везувий",
         "Печи Мальника",
     ]
+
+
+@pytest.mark.django_db
+def test_catalog_filters_are_limited_by_selected_filters():
+    client = APIClient()
+
+    sauna = Section.objects.create(
+        name="Печи для бани",
+        slug="sauna",
+        ordering=1,
+    )
+    fireplace = Section.objects.create(
+        name="Камины",
+        slug="fireplace",
+        ordering=2,
+    )
+
+    brand_a = Manufacturer.objects.create(
+        name="Brand A",
+        slug="brand-a",
+        is_active=True,
+    )
+    brand_b = Manufacturer.objects.create(
+        name="Brand B",
+        slug="brand-b",
+        is_active=True,
+    )
+
+    matching = Product.objects.create(
+        name="Дровяная печь с духовкой",
+        price=10000,
+        fuel_type="wood",
+        heated_volume=100,
+        chimney_diameter="115",
+        oven=True,
+        manufacturer=brand_a,
+        is_active=True,
+    )
+    matching.sections.add(sauna)
+
+    wrong_fuel = Product.objects.create(
+        name="Газовая печь с духовкой",
+        price=20000,
+        fuel_type="gas",
+        heated_volume=150,
+        chimney_diameter="120",
+        oven=True,
+        manufacturer=brand_a,
+        is_active=True,
+    )
+    wrong_fuel.sections.add(sauna)
+
+    wrong_section = Product.objects.create(
+        name="Дровяной камин с духовкой",
+        price=30000,
+        fuel_type="wood",
+        heated_volume=200,
+        chimney_diameter="130",
+        oven=True,
+        manufacturer=brand_b,
+        is_active=True,
+    )
+    wrong_section.sections.add(fireplace)
+
+    response = client.get(reverse("catalog-filters"), {
+        "section": [sauna.id],
+        "fuel_type": ["wood"],
+        "oven": True,
+    })
+
+    assert response.status_code == 200
+
+    data = response.json()
+    filters = data["filters"]
+
+    fuel_filter = next(f for f in filters if f["field"] == "fuel_type")
+    assert [option["value"] for option in fuel_filter["options"]] == ["wood"]
+    assert fuel_filter["options"][0]["count"] == 1
+
+    heated_filter = next(f for f in filters if f["field"] == "heated_volume")
+    assert [option["value"] for option in heated_filter["options"]] == [100]
+
+    chimney_filter = next(f for f in filters if f["field"] == "chimney_diameter")
+    assert [option["value"] for option in chimney_filter["options"]] == ["115"]
+
+    assert [section["id"] for section in data["sections"]] == [sauna.id]
+    manufacturer_names = [
+        manufacturer["name"]
+        for manufacturer in data["manufacturers"]
+    ]
+    assert manufacturer_names == ["Brand A"]
