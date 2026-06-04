@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 
 from rest_framework import serializers
 
@@ -17,8 +18,20 @@ class EmailRequestSerializer(serializers.Serializer):
     def validate_link(self, value):
         value = value.strip()
 
-        if not value.startswith("https://kamini-melnika.ru/"):
-            logger.warning(f"Ошибка отправки email. Не верная ссылка: {value}")
-            raise serializers.ValidationError("Ссылка должна быть с kamini-melnika.ru")
+        parsed = urlparse(value)
+
+        allowed_hosts = {
+            "kamini-melnika.ru",
+            "www.kamini-melnika.ru",
+        }
+
+        if parsed.hostname not in allowed_hosts:
+            logger.warning(
+                "Ошибка отправки email. Не верная ссылка: %s",
+                value,
+            )
+            raise serializers.ValidationError(
+                "Ссылка должна быть с kamini-melnika.ru"
+            )
 
         return value
