@@ -25,6 +25,10 @@ class CatalogFiltersAPIView(APIView):
 
         filters = serializer.validated_data
         products_queryset = get_filtered_product_queryset(filters)
+        manufacturers_queryset = get_filtered_product_queryset(
+            filters,
+            exclude_filter="manufacturer",
+        )
 
         sections = (
             Section.objects
@@ -54,7 +58,7 @@ class CatalogFiltersAPIView(APIView):
             .annotate(
                 product_count=Count(
                     "product",
-                    filter=Q(product__id__in=products_queryset.values("id")),
+                    filter=Q(product__id__in=manufacturers_queryset.values("id")),
                     distinct=True,
                 )
             )
@@ -72,6 +76,9 @@ class CatalogFiltersAPIView(APIView):
                 manufacturers,
                 many=True,
             ).data,
-            "filters": generate_filters(products_queryset),
+            "filters": generate_filters(
+                products_queryset,
+                selected_filters=filters,
+            ),
             "sorting": SORTING_OPTIONS,
         })

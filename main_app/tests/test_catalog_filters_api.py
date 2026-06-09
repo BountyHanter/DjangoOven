@@ -354,8 +354,10 @@ def test_catalog_filters_are_limited_by_selected_filters():
     filters = data["filters"]
 
     fuel_filter = next(f for f in filters if f["field"] == "fuel_type")
-    assert [option["value"] for option in fuel_filter["options"]] == ["wood"]
-    assert fuel_filter["options"][0]["count"] == 1
+    assert [option["value"] for option in fuel_filter["options"]] == [
+        "wood",
+        "gas",
+    ]
 
     heated_filter = next(f for f in filters if f["field"] == "heated_volume")
     assert [option["value"] for option in heated_filter["options"]] == [100]
@@ -369,3 +371,74 @@ def test_catalog_filters_are_limited_by_selected_filters():
         for manufacturer in data["manufacturers"]
     ]
     assert manufacturer_names == ["Brand A"]
+
+
+@pytest.mark.django_db
+def test_catalog_filters_keep_same_filter_options_for_or_selection():
+    client = APIClient()
+
+    brand_a = Manufacturer.objects.create(
+        name="Brand A",
+        slug="brand-a-or",
+        is_active=True,
+    )
+    brand_b = Manufacturer.objects.create(
+        name="Brand B",
+        slug="brand-b-or",
+        is_active=True,
+    )
+
+    Product.objects.create(
+        name="Brand A steel",
+        price=10000,
+        fuel_type="wood",
+        firebox_material="steel",
+        manufacturer=brand_a,
+        is_active=True,
+    )
+    Product.objects.create(
+        name="Brand A cast iron",
+        price=11000,
+        fuel_type="wood",
+        firebox_material="cast_iron",
+        manufacturer=brand_a,
+        is_active=True,
+    )
+    Product.objects.create(
+        name="Brand B steel",
+        price=12000,
+        fuel_type="gas",
+        firebox_material="steel",
+        manufacturer=brand_b,
+        is_active=True,
+    )
+
+    response = client.get(reverse("catalog-filters"), {
+        "manufacturer": [brand_a.id],
+        "firebox_material": ["steel"],
+    })
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    manufacturer_names = [
+        manufacturer["name"]
+        for manufacturer in data["manufacturers"]
+    ]
+    assert manufacturer_names == ["Brand A", "Brand B"]
+
+    firebox_filter = next(
+        f for f in data["filters"]
+        if f["field"] == "firebox_material"
+    )
+    assert [option["value"] for option in firebox_filter["options"]] == [
+        "cast_iron",
+        "steel",
+    ]
+
+    fuel_filter = next(
+        f for f in data["filters"]
+        if f["field"] == "fuel_type"
+    )
+    assert [option["value"] for option in fuel_filter["options"]] == ["wood"]

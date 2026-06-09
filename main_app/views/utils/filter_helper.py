@@ -156,10 +156,20 @@ def get_catalog_queryset(with_related=False):
     return annotate_catalog_queryset(queryset)
 
 
-def apply_product_filters(queryset, filters):
+def is_filter_excluded(exclude_filter, filter_name):
+    if exclude_filter is None:
+        return False
+
+    if isinstance(exclude_filter, (list, tuple, set)):
+        return filter_name in exclude_filter
+
+    return exclude_filter == filter_name
+
+
+def apply_product_filters(queryset, filters, exclude_filter=None):
     discount = filters.get("discount")
 
-    if discount:
+    if discount and not is_filter_excluded(exclude_filter, "discount"):
         queryset = queryset.filter(discount_price__isnull=False)
 
     search_query = filters.get("search")
@@ -169,7 +179,7 @@ def apply_product_filters(queryset, filters):
 
     section_ids = filters.get("section")
 
-    if section_ids:
+    if section_ids and not is_filter_excluded(exclude_filter, "section"):
         sections = Section.objects.filter(
             id__in=section_ids,
             is_active=True,
@@ -184,13 +194,16 @@ def apply_product_filters(queryset, filters):
 
     manufacturer_ids = filters.get("manufacturer")
 
-    if manufacturer_ids:
+    if manufacturer_ids and not is_filter_excluded(exclude_filter, "manufacturer"):
         queryset = queryset.filter(
             manufacturer__id__in=manufacturer_ids,
             manufacturer__is_active=True,
         )
 
     for field in FILTER_FIELDS:
+        if is_filter_excluded(exclude_filter, field):
+            continue
+
         value = filters.get(field)
 
         if value is None:
@@ -204,28 +217,28 @@ def apply_product_filters(queryset, filters):
     price_from = filters.get("price_from")
     price_to = filters.get("price_to")
 
-    if price_from:
+    if price_from and not is_filter_excluded(exclude_filter, "price"):
         queryset = queryset.filter(final_price__gte=price_from)
 
-    if price_to:
+    if price_to and not is_filter_excluded(exclude_filter, "price"):
         queryset = queryset.filter(final_price__lte=price_to)
 
     power_kw_min = filters.get("power_kw_min")
     power_kw_max = filters.get("power_kw_max")
 
-    if power_kw_min:
+    if power_kw_min and not is_filter_excluded(exclude_filter, "power_kw"):
         queryset = queryset.filter(power_kw__gte=power_kw_min)
 
-    if power_kw_max:
+    if power_kw_max and not is_filter_excluded(exclude_filter, "power_kw"):
         queryset = queryset.filter(power_kw__lte=power_kw_max)
 
     steam_from = filters.get("steam_volume_from")
     steam_to = filters.get("steam_volume_to")
 
-    if steam_from is not None:
+    if steam_from is not None and not is_filter_excluded(exclude_filter, "steam_volume"):
         queryset = queryset.filter(steam_volume_to__gte=steam_from)
 
-    if steam_to is not None:
+    if steam_to is not None and not is_filter_excluded(exclude_filter, "steam_volume"):
         queryset = queryset.filter(steam_volume_from__lte=steam_to)
 
     return queryset
@@ -242,9 +255,18 @@ def apply_product_ordering(queryset, filters):
     return queryset.order_by(*ordering_fields)
 
 
-def get_filtered_product_queryset(filters, with_related=False, with_ordering=False):
+def get_filtered_product_queryset(
+    filters,
+    with_related=False,
+    with_ordering=False,
+    exclude_filter=None,
+):
     queryset = get_catalog_queryset(with_related=with_related)
-    queryset = apply_product_filters(queryset, filters)
+    queryset = apply_product_filters(
+        queryset,
+        filters,
+        exclude_filter=exclude_filter,
+    )
 
     if with_ordering:
         queryset = apply_product_ordering(queryset, filters)
@@ -349,14 +371,24 @@ def append_filter_if_not_empty(filters, filter_data):
         filters.append(filter_data)
 
 
-def generate_filters(queryset=None):
+def generate_filters(queryset=None, selected_filters=None):
     if queryset is None:
         queryset = get_catalog_queryset()
 
-    filters = []
+    def get_facet_queryset(filter_name):
+        if selected_filters is None:
+            return queryset
 
+        return get_filtered_product_queryset(
+            selected_filters,
+            exclude_filter=filter_name,
+        )
+
+    filter_items = []
+
+    price_queryset = get_facet_queryset("price")
     price_filter = get_range_filter(
-        queryset,
+        price_queryset,
         "final_price",
         "Цена",
         RANGE_FILTERS["price"]["min_param"],
@@ -365,7 +397,7 @@ def generate_filters(queryset=None):
 
     if price_filter:
         price_filter["field"] = "price"
-        filters.append(price_filter)
+        filter_items.append(price_filter)
 
     for field in Product._meta.get_fields():
 
@@ -376,7 +408,8 @@ def generate_filters(queryset=None):
 
         label = clean_label(str(field.verbose_name))
 
-        counts = get_counts(queryset, field_name)
+        facet_queryset = get_facet_queryset(field_name)
+        counts = get_counts(facet_queryset, field_name)
 
         # ---------------- select (choices) ----------------
         if getattr(field, "choices", None):
@@ -396,7 +429,7 @@ def generate_filters(queryset=None):
                 })
 
             if options:
-                filters.append({
+                filter_items.append({
                     "field": field_name,
                     "label": label,
                     "type": "select",
@@ -406,12 +439,12 @@ def generate_filters(queryset=None):
         # ---------------- boolean ----------------
         elif isinstance(field, models.BooleanField):
 
-            true_count = queryset.filter(
+            true_count = facet_queryset.filter(
                 **{field_name: True}
             ).count()
 
             if true_count > 0:
-                filters.append({
+                filter_items.append({
                     "field": field_name,
                     "label": label,
                     "type": "boolean",
@@ -421,7 +454,7 @@ def generate_filters(queryset=None):
         # ---------------- select (unique values for integer) ----------------
         elif field_name == "heated_volume":
 
-            options = get_unique_values(queryset, field_name)
+            options = get_unique_values(facet_queryset, field_name)
 
             for opt in options:
                 opt["count"] = counts.get(opt["value"], 0)
@@ -433,7 +466,7 @@ def generate_filters(queryset=None):
             ]
 
             if options:
-                filters.append({
+                filter_items.append({
                     "field": field_name,
                     "label": label,
                     "type": "select",
@@ -447,9 +480,9 @@ def generate_filters(queryset=None):
 
             if config:
                 append_filter_if_not_empty(
-                    filters,
+                    filter_items,
                     get_range_filter(
-                        queryset,
+                        facet_queryset,
                         field_name,
                         label,
                         config["min_param"],
@@ -460,7 +493,7 @@ def generate_filters(queryset=None):
         # ---------------- CharField без choices ----------------
         elif isinstance(field, models.CharField):
 
-            options = get_unique_values(queryset, field_name)
+            options = get_unique_values(facet_queryset, field_name)
 
             for opt in options:
                 opt["count"] = counts.get(opt["value"], 0)
@@ -472,7 +505,7 @@ def generate_filters(queryset=None):
             ]
 
             if options:
-                filters.append({
+                filter_items.append({
                     "field": field_name,
                     "label": label,
                     "type": "select",
@@ -480,12 +513,13 @@ def generate_filters(queryset=None):
                 })
 
     # ---------------- discount ----------------
-    discount_count = queryset.filter(
+    discount_queryset = get_facet_queryset("discount")
+    discount_count = discount_queryset.filter(
         discount_price__isnull=False,
     ).count()
 
     if discount_count > 0:
-        filters.append({
+        filter_items.append({
             "field": "discount",
             "label": "Со скидкой",
             "type": "boolean",
@@ -494,8 +528,8 @@ def generate_filters(queryset=None):
 
     # ---------------- steam volume ----------------
     append_filter_if_not_empty(
-        filters,
-        get_steam_volume_filter(queryset),
+        filter_items,
+        get_steam_volume_filter(get_facet_queryset("steam_volume")),
     )
 
-    return filters
+    return filter_items
