@@ -1,9 +1,13 @@
+from django import forms
 from django.contrib import admin
+from django.db import models
 from django.utils.html import format_html
 
 from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
+from main_app.models.attribute import ProductAttributeValue
 from main_app.models.parser import ParserResult
 from main_app.models.product import Product, ProductImage, ProductDocument
+
 
 class ParserResultInline(admin.StackedInline):
     model = ParserResult
@@ -22,6 +26,37 @@ class ParserResultInline(admin.StackedInline):
         "processing_time",
         "error_text",
     )
+
+
+class ProductAttributeValueInline(admin.TabularInline):
+    model = ProductAttributeValue
+    extra = 1
+
+    fields = (
+        "attribute",
+        "option",
+        "value_number",
+        "value_bool",
+        "value_text",
+    )
+
+    autocomplete_fields = (
+        "attribute",
+        "option",
+    )
+
+    formfield_overrides = {
+        models.TextField: {
+            "widget": forms.Textarea(attrs={
+                "rows": 3,
+                "cols": 40,
+                "style": "width: 400px; resize: vertical;"
+            })
+        }
+    }
+
+    show_change_link = True
+
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -53,44 +88,38 @@ class ProductDocumentInline(admin.TabularInline):
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
 
-    inlines = [ParserResultInline, ProductImageInline, ProductDocumentInline]
+    inlines = [
+        ParserResultInline,
+        ProductAttributeValueInline,
+        ProductImageInline,
+        ProductDocumentInline,
+    ]
 
     filter_horizontal = ("sections",)
+
+    readonly_fields = ("slug",)
 
     search_fields = (
         "name",
         "sku",
         "series",
+        "manufacturer__name",
     )
 
     list_display = (
         "name",
         "manufacturer",
-        "fuel_type",
         "price",
         "discount_price",
         "in_stock",
         "is_active",
+        "is_new",
+        "is_bestseller",
     )
 
     list_filter = (
         "sections",
         "manufacturer",
-        "fuel_type",
-        "heated_volume",
-        "power_kw",
-        "firebox_material",
-        "firebox_type",
-        "installation_type",
-        "heater_type",
-        "door_mechanism",
-        "fire_view",
-        "glass_count",
-        "heat_exchanger",
-        "glass_lift",
-        "water_circuit",
-        "damper",
-        "cooking_panel",
         "free_delivery",
         "in_stock",
         "is_active",
@@ -99,12 +128,12 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-
         (
             "Основная информация",
             {
                 "fields": (
                     "name",
+                    "slug",
                     "manufacturer",
                     "sections",
                     "description",
@@ -114,7 +143,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Цены",
             {
@@ -124,7 +152,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Статусы",
             {
@@ -137,47 +164,15 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
-            "Параметры и характеристики",
+            "Идентификаторы",
             {
                 "fields": (
                     "sku",
                     "series",
-                    "fuel_type",
-                    "heated_volume",
-                    ("steam_volume_from", "steam_volume_to"),
-                    "power_kw",
-                    "lining_material",
-                    "firebox_material",
-                    "firebox_type",
-                    "installation_type",
-                    "heater_type",
-                    "stone_material",
-                    "tank_type",
-                    "door_mechanism",
-                    "fire_view",
-                    "glass_count",
-                    "chimney_diameter",
-                    "chimney_connection",
-                    "closed_heater_volume",
-                    "warranty_years",
-                    "efficiency",
-                    "dimensions",
-                    "weight",
-                    "oven_weight",
-                    "stone_weight",
-                    "long_fire",
-                    "heat_exchanger",
-                    "glass_lift",
-                    "water_circuit",
-                    "damper",
-                    "cooking_panel",
-                    "oven",
                 )
             },
         ),
-
         (
             "SEO",
             {
@@ -188,7 +183,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Загрузить множество изображений",
             {
@@ -197,7 +191,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
     )
 
     def save_model(self, request, obj, form, change):

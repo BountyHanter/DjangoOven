@@ -4,3 +4,4 @@ from .manufacturer import ManufacturerAdmin
 from .portfolio import PortfolioAdmin
 from .section import SectionAdmin
 from .banner import BannerAdmin
+from .attribute import *
