@@ -1,6 +1,6 @@
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import AllowAny
-from django.db.models import Case, When, F, DecimalField, BooleanField, Value, Q
+from django.db.models import Case, When, F, DecimalField
 
 from main_app.models import Product
 from main_app.serializers.product_detail import ProductDetailSerializer

@@ -6,6 +6,7 @@ from main_app.views.manufacturer import ManufacturerPreviewListView, Manufacture
 from main_app.views.portfolio import PortfolioListAPIView
 from main_app.views.product_detail import ProductDetailAPIView
 from main_app.views.product_preview import ProductCatalogAPIView
+from main_app.views.product_video import ProductVideoListAPIView
 from main_app.views.review import ReviewListView
 from main_app.views.section import CatalogFiltersAPIView
 
@@ -15,6 +16,7 @@ catalog_patterns = [
     # продукты
     path("products/", ProductCatalogAPIView.as_view(), name="catalog-products"),
     path("products/<int:id>/", ProductDetailAPIView.as_view(), name="catalog-product-detail"),
+    path("products/<int:product_id>/videos/", ProductVideoListAPIView.as_view(), name="product-videos"),
 
     # портфолио
     path("portfolio/", PortfolioListAPIView.as_view(), name="catalog-portfolio"),

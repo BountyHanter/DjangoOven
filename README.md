@@ -107,7 +107,7 @@
 Текущие варианты:
 
 - `new` — сначала новые
-- `popular` — сначала популярное (`is_bestseller=true`), внутри по новизне
+- `popular` — сначала хиты с `priority` от `1`, затем хиты без `priority`, затем остальные; внутри одинаковых групп по новизне
 - `price_asc` — по возрастанию итоговой цены
 - `price_desc` — по убыванию итоговой цены
 
@@ -248,7 +248,7 @@
 #### Сортировка
 
 - `ordering=new`
-- `ordering=popular`
+- `ordering=popular` — сначала хиты с `priority` от `1`, затем хиты без `priority`, затем остальные
 - `ordering=price_asc`
 - `ordering=price_desc`
 - если передано неизвестное значение, используется `new`
@@ -282,7 +282,8 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&m
 - `manufacturer` — объект `{ "name": ... }`
 - `is_new`
 - `is_bestseller`
-- `has_video`
+- `priority`
+- `has_video` — есть связанные видео товара
 - `price`
 - `discount_price`
 - `power_kw`
@@ -308,6 +309,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&m
       "manufacturer": { "name": "Harvia" },
       "is_new": false,
       "is_bestseller": true,
+      "priority": 1,
       "has_video": true,
       "price": 100000,
       "discount_price": 90000,
@@ -354,16 +356,17 @@ sections = [
 - `sections` в формате breadcrumb-путей
 - `images` — `{ image, is_main, ordering }`
 - `documents` — `{ title, file }`
+- Видео товара возвращаются отдельным endpoint `/api/v1/catalog/products/{product_id}/videos/`
 - Автоматически добавляются `*_display` для полей с `choices`
 
 ### 7.2 Поля модели Product (текущий набор)
 
 - `id`, `name`, `slug`
 - `manufacturer`
-- `description`, `video_url`, `video_preview`, `schema`
+- `description`, `video_preview`, `schema`
 - `price`, `discount_price`
 - `free_delivery`, `in_stock`, `is_active`, `is_new`, `is_bestseller`
-- `sku`, `series`
+- `priority`, `sku`, `series`
 - `heated_volume`, `power_kw`, `lining_material`, `fuel_type`, `firebox_material`, `firebox_type`, `installation_type`
 - `glass_count`, `fire_view`, `heater_type`, `water_circuit`, `stone_material`, `tank_type`, `door_mechanism`
 - `chimney_diameter`, `chimney_connection`
@@ -397,6 +400,7 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
   ],
   "price": 150000,
   "discount_price": 120000,
+  "priority": 1,
   "fuel_type": "wood",
   "fuel_type_display": "Дровяная",
   "power_kw": 14,
@@ -418,6 +422,38 @@ curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
   "created_at": "2026-03-07T12:44:10.123456+0000",
   "updated_at": "2026-03-07T12:44:10.123456+0000"
 }
+```
+
+### 7.5 Видео товара
+
+### `GET /api/v1/catalog/products/{product_id}/videos/`
+
+Возвращает список видео активного товара без пагинации.
+
+Поля элемента:
+
+- `id`
+- `url`
+- `ordering`
+
+Сортировка: `ordering`, затем `id`.
+
+Пример:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/15/videos/"
+```
+
+Пример ответа:
+
+```json
+[
+  {
+    "id": 1,
+    "url": "https://youtube.com/watch?v=test",
+    "ordering": 0
+  }
+]
 ```
 
 ---
