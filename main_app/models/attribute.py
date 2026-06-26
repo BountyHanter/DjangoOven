@@ -1,7 +1,14 @@
-from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
-from slugify import slugify
+
+from main_app.services.attributes.attribute import (
+    generate_attribute_option_slug,
+    generate_attribute_slug,
+    get_attribute_value_display,
+    validate_attribute,
+    validate_attribute_option,
+    validate_attribute_value,
+)
 
 
 class ProductAttribute(models.Model):
@@ -56,31 +63,10 @@ class ProductAttribute(models.Model):
         return self.name
 
     def clean(self):
-        if self.allow_multiple and self.type != self.AttributeType.CHOICE:
-            raise ValidationError(
-                {
-                    "allow_multiple": (
-                        "Несколько значений разрешены только для типа "
-                        "'Выбор из списка'"
-                    )
-                }
-            )
+        validate_attribute(self)
 
     def _generate_unique_slug(self):
-        max_length = self._meta.get_field("slug").max_length
-        base_slug = slugify(self.name) or "attribute"
-        base_slug = base_slug[:max_length]
-        slug = base_slug
-        counter = 1
-
-        queryset = ProductAttribute.objects.exclude(pk=self.pk)
-
-        while queryset.filter(slug=slug).exists():
-            suffix = f"-{counter}"
-            slug = f"{base_slug[: max_length - len(suffix)]}{suffix}"
-            counter += 1
-
-        return slug
+        return generate_attribute_slug(self)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -140,45 +126,10 @@ class ProductAttributeOption(models.Model):
         return self.value
 
     def clean(self):
-        if not self.attribute_id:
-            return
-
-        attribute_type = (
-            ProductAttribute.objects.filter(pk=self.attribute_id)
-            .values_list("type", flat=True)
-            .first()
-        )
-
-        if (
-            attribute_type
-            and attribute_type != ProductAttribute.AttributeType.CHOICE
-        ):
-            raise ValidationError(
-                {
-                    "attribute": (
-                        "Варианты можно добавлять только для характеристик "
-                        "типа 'Выбор из списка'"
-                    )
-                }
-            )
+        validate_attribute_option(self)
 
     def _generate_unique_slug(self):
-        max_length = self._meta.get_field("slug").max_length
-        base_slug = slugify(self.value) or "option"
-        base_slug = base_slug[:max_length]
-        slug = base_slug
-        counter = 1
-
-        queryset = ProductAttributeOption.objects.filter(
-            attribute_id=self.attribute_id,
-        ).exclude(pk=self.pk)
-
-        while self.attribute_id and queryset.filter(slug=slug).exists():
-            suffix = f"-{counter}"
-            slug = f"{base_slug[: max_length - len(suffix)]}{suffix}"
-            counter += 1
-
-        return slug
+        return generate_attribute_option_slug(self)
 
     def save(self, *args, **kwargs):
         if not self.slug:
@@ -272,149 +223,10 @@ class ProductAttributeValue(models.Model):
 
     @property
     def display_value(self):
-        if self.option_id:
-            return self.option.value
-
-        if self.value_number is not None:
-            if self.attribute_id and self.attribute.unit:
-                return f"{self.value_number} {self.attribute.unit}"
-            return str(self.value_number)
-
-        if self.value_bool is not None:
-            return "Да" if self.value_bool else "Нет"
-
-        return self.value_text
+        return get_attribute_value_display(self)
 
     def clean(self):
-        errors = {}
-        attribute = None
-
-        if self.attribute_id:
-            attribute = (
-                ProductAttribute.objects.filter(pk=self.attribute_id)
-                .only("type", "allow_multiple")
-                .first()
-            )
-
-        if self.option_id and self.attribute_id:
-            option_attribute_id = (
-                ProductAttributeOption.objects.filter(pk=self.option_id)
-                .values_list("attribute_id", flat=True)
-                .first()
-            )
-
-            if (
-                option_attribute_id is not None
-                and option_attribute_id != self.attribute_id
-            ):
-                errors["option"] = (
-                    "Выбранный вариант не относится к выбранной характеристике"
-                )
-
-        if (
-            attribute
-            and self.product_id
-            and not attribute.allow_multiple
-        ):
-            exists = ProductAttributeValue.objects.filter(
-                product_id=self.product_id,
-                attribute_id=self.attribute_id,
-            ).exclude(pk=self.pk).exists()
-
-            if exists:
-                errors["attribute"] = (
-                    "У этой характеристики для товара уже есть значение"
-                )
-
-        if not attribute:
-            if errors:
-                raise ValidationError(errors)
-            return
-
-        attribute_type = attribute.type
-        has_option = self.option_id is not None
-        has_text = bool((self.value_text or "").strip())
-        has_number = self.value_number is not None
-        has_bool = self.value_bool is not None
-
-        if attribute_type == ProductAttribute.AttributeType.CHOICE:
-            if not has_option:
-                errors["option"] = (
-                    "Для характеристики типа 'Выбор из списка' нужно выбрать вариант"
-                )
-
-            if has_text:
-                errors["value_text"] = (
-                    "Для характеристики типа 'Выбор из списка' используется только вариант"
-                )
-            if has_number:
-                errors["value_number"] = (
-                    "Для характеристики типа 'Выбор из списка' используется только вариант"
-                )
-            if has_bool:
-                errors["value_bool"] = (
-                    "Для характеристики типа 'Выбор из списка' используется только вариант"
-                )
-
-        elif attribute_type == ProductAttribute.AttributeType.NUMBER:
-            if not has_number:
-                errors["value_number"] = (
-                    "Для числовой характеристики нужно указать число"
-                )
-
-            if has_option:
-                errors["option"] = (
-                    "Для числовой характеристики используется только число"
-                )
-            if has_text:
-                errors["value_text"] = (
-                    "Для числовой характеристики используется только число"
-                )
-            if has_bool:
-                errors["value_bool"] = (
-                    "Для числовой характеристики используется только число"
-                )
-
-        elif attribute_type == ProductAttribute.AttributeType.BOOLEAN:
-            if not has_bool:
-                errors["value_bool"] = (
-                    "Для характеристики Да/Нет нужно указать значение"
-                )
-
-            if has_option:
-                errors["option"] = (
-                    "Для характеристики Да/Нет используется только boolean-значение"
-                )
-            if has_text:
-                errors["value_text"] = (
-                    "Для характеристики Да/Нет используется только boolean-значение"
-                )
-            if has_number:
-                errors["value_number"] = (
-                    "Для характеристики Да/Нет используется только boolean-значение"
-                )
-
-        elif attribute_type == ProductAttribute.AttributeType.TEXT:
-            if not has_text:
-                errors["value_text"] = (
-                    "Для текстовой характеристики нужно указать текст"
-                )
-
-            if has_option:
-                errors["option"] = (
-                    "Для текстовой характеристики используется только текст"
-                )
-            if has_number:
-                errors["value_number"] = (
-                    "Для текстовой характеристики используется только текст"
-                )
-            if has_bool:
-                errors["value_bool"] = (
-                    "Для текстовой характеристики используется только текст"
-                )
-
-        if errors:
-            raise ValidationError(errors)
+        validate_attribute_value(self)
 
     def save(self, *args, **kwargs):
         self.full_clean()
