@@ -6,7 +6,7 @@ from django.utils.html import format_html
 from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
 from main_app.models.attribute import ProductAttributeValue
 from main_app.models.parser import ParserResult
-from main_app.models.product import Product, ProductImage, ProductDocument
+from main_app.models.product import Product, ProductImage, ProductDocument, ProductVideo
 
 
 class ParserResultInline(admin.StackedInline):
@@ -84,14 +84,21 @@ class ProductDocumentInline(admin.TabularInline):
     ordering = ("ordering",)
 
 
+class ProductVideoInline(admin.TabularInline):
+    model = ProductVideo
+    extra = 1
+    fields = ("url", "ordering")
+    ordering = ("ordering",)
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     form = ProductAdminForm
 
     inlines = [
         ParserResultInline,
-        ProductAttributeValueInline,
         ProductImageInline,
+        ProductVideoInline,
         ProductDocumentInline,
     ]
 
@@ -137,7 +144,6 @@ class ProductAdmin(admin.ModelAdmin):
                     "manufacturer",
                     "sections",
                     "description",
-                    "video_url",
                     "video_preview",
                     "schema",
                 )
@@ -168,6 +174,7 @@ class ProductAdmin(admin.ModelAdmin):
             "Идентификаторы",
             {
                 "fields": (
+                    "priority",
                     "sku",
                     "series",
                 )

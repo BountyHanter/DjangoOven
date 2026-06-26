@@ -37,6 +37,7 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "manufacturer",
             "is_new",
             "is_bestseller",
+            "priority",
             "has_video",
             "price",
             "discount_price",

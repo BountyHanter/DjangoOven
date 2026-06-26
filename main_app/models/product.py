@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 from slugify import slugify
 
 from main_app.models.manufacturer import Manufacturer
@@ -36,12 +37,6 @@ class Product(models.Model):
         blank=True,
         null=True,
         verbose_name="Описание",
-    )
-
-    video_url = models.TextField(
-        blank=True,
-        null=True,
-        verbose_name="Ссылка на видео-обзор",
     )
 
     video_preview = models.ImageField(
@@ -95,7 +90,16 @@ class Product(models.Model):
         verbose_name="Хит продаж",
     )
 
-    # --- ИДЕНТИФИКАТОРЫ / СЕРИЯ ---
+    # --- ПАРАМЕТРЫ И ХАРАКТЕРИСТИКИ ---
+
+    priority = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        verbose_name="Приоритет",
+        help_text="1 — самый высокий приоритет; пустое значение — без приоритета",
+    )
+
     sku = models.CharField(
         max_length=255,
         blank=True,
@@ -198,6 +202,31 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Изображение — {self.product.name}"
+
+
+class ProductVideo(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="videos",
+    )
+
+    url = models.TextField(
+        verbose_name="Ссылка на видео",
+    )
+
+    ordering = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Порядок",
+    )
+
+    class Meta:
+        ordering = ["ordering", "id"]
+        verbose_name = "Видео товара"
+        verbose_name_plural = "Видео товара"
+
+    def __str__(self):
+        return self.url
 
 
 class ProductDocument(models.Model):

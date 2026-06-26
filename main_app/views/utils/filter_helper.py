@@ -2,19 +2,21 @@ import re
 
 from django.db import models
 from django.db.models import (
-    BooleanField,
     Case,
     Count,
     DecimalField,
+    Exists,
     F,
+    IntegerField,
     Max,
     Min,
+    OuterRef,
     Q,
     Value,
     When,
 )
 
-from main_app.models.product import Product
+from main_app.models.product import Product, ProductVideo
 from main_app.models.section import Section
 
 
@@ -133,13 +135,8 @@ def annotate_catalog_queryset(queryset):
             default=F("price"),
             output_field=DecimalField(max_digits=12, decimal_places=2),
         ),
-        has_video=Case(
-            When(
-                Q(video_url__isnull=False) & ~Q(video_url=""),
-                then=Value(True),
-            ),
-            default=Value(False),
-            output_field=BooleanField(),
+        has_video=Exists(
+            ProductVideo.objects.filter(product_id=OuterRef("pk"))
         ),
     )
 
@@ -246,6 +243,35 @@ def apply_product_filters(queryset, filters, exclude_filter=None):
 
 def apply_product_ordering(queryset, filters):
     ordering = filters.get("ordering", DEFAULT_SORTING)
+
+    if ordering == "popular":
+        queryset = queryset.annotate(
+            bestseller_priority_group=Case(
+                When(
+                    is_bestseller=True,
+                    priority__isnull=False,
+                    then=Value(0),
+                ),
+                When(is_bestseller=True, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            ),
+            bestseller_priority_value=Case(
+                When(
+                    is_bestseller=True,
+                    priority__isnull=False,
+                    then=F("priority"),
+                ),
+                default=Value(None),
+                output_field=IntegerField(),
+            ),
+        )
+
+        return queryset.order_by(
+            "bestseller_priority_group",
+            "bestseller_priority_value",
+            "-created_at",
+        )
 
     ordering_fields = SORTING_MAP.get(
         ordering,
