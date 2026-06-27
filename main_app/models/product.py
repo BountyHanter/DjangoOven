@@ -211,7 +211,8 @@ class ProductVideo(models.Model):
         related_name="videos",
     )
 
-    url = models.TextField(
+    url = models.URLField(
+        max_length=500,
         verbose_name="Ссылка на видео",
     )
 

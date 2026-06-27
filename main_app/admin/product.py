@@ -97,6 +97,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     inlines = [
         ParserResultInline,
+        ProductAttributeValueInline,
         ProductImageInline,
         ProductVideoInline,
         ProductDocumentInline,

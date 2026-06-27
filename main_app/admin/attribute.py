@@ -74,12 +74,14 @@ class ProductAttributeOptionInline(admin.TabularInline):
     extra = 1
 
     fields = (
+        "id",
         "value",
         "slug",
         "is_active",
     )
 
     readonly_fields = (
+        "id",
         "slug",
     )
 
@@ -106,7 +108,17 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "slug",
     )
 
+    fields = (
+        "id",
+        "name",
+        "slug",
+        "type",
+        "allow_multiple",
+        "unit",
+    )
+
     readonly_fields = (
+        "id",
         "slug",
     )
 
@@ -144,7 +156,16 @@ class ProductAttributeOptionAdmin(admin.ModelAdmin):
         "attribute",
     )
 
+    fields = (
+        "id",
+        "attribute",
+        "value",
+        "slug",
+        "is_active",
+    )
+
     readonly_fields = (
+        "id",
         "slug",
     )
 
@@ -178,7 +199,21 @@ class ProductAttributeValueAdmin(admin.ModelAdmin):
         "option",
     )
 
+    fields = (
+        "id",
+        "product",
+        "attribute",
+        "display_value",
+        "option",
+        "value_text",
+        "value_number",
+        "value_bool",
+        "created_at",
+        "updated_at",
+    )
+
     readonly_fields = (
+        "id",
         "display_value",
         "created_at",
         "updated_at",
