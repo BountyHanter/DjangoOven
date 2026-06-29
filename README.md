@@ -1,24 +1,23 @@
 # DjangoOven Frontend API Documentation
 
-Документация ниже описывает API именно как контракт для фронтенда.
-Только фактическое поведение текущего бэкенда: URL, параметры, фильтры, пагинация, сортировка и структура ответов.
+Документация описывает публичный контракт API для фронтенда: URL, параметры, пагинацию и структуру ответов.
 
 ## 1. Base URL и общие правила
 
-- Base URL (локально): `http://127.0.0.1:8000`
+- Base URL локально: `http://127.0.0.1:8000`
 - API prefix: `/api/v1/`
 - Формат: JSON
-- Аутентификация: для публичных каталоговых endpoint не требуется
-- Медиа-файлы (`image`, `file`) обычно приходят как URL вида `/media/...` или абсолютный URL (зависит от контекста запроса)
+- Публичные endpoint работают без авторизации
+- Медиа-файлы обычно приходят как `/media/...`; при запросе с полным host могут быть абсолютными URL
 
-## 2. Общая пагинация (для всех list endpoint)
+## 2. Пагинация
 
-Все endpoint на `ListAPIView` используют одну и ту же пагинацию:
+List endpoint используют page-number пагинацию:
 
 - `page` — номер страницы
 - `page_size` — размер страницы
 - `page_size` по умолчанию: `9`
-- `max page_size`: `10000`
+- максимальный `page_size`: `10000`
 
 Типовой ответ:
 
@@ -31,18 +30,20 @@
 }
 ```
 
-## 3. Форматы и типы
+Форматы данных, на которые стоит ориентироваться:
 
-- `datetime`: формат `%Y-%m-%dT%H:%M:%S.%f%z` (например, `2026-03-07T12:44:10.123456+0000`)
-- `DecimalField`: строкой (например, `"95.50"`)
-- `IntegerField`: числом
-- `BooleanField`: `true/false`
+- `datetime` приходит строкой в формате `2026-03-07T12:44:10.123456+0000`;
+- цены (`price`, `discount_price`, `price.min`, `price.max`) приходят числами;
+- значения числовых характеристик в карточках товара приходят строками, например `"18.50"`;
+- диапазоны числовых характеристик в `/catalog/filters/` приходят числами;
+- boolean-значения приходят как `true` или `false`.
 
-## 4. Быстрый список endpoint
+## 3. Быстрый список endpoint
 
 - `GET /api/v1/health/` — healthcheck
-- `GET /api/v1/catalog/filters/` — дерево разделов + бренды + метаданные фильтров + сортировки
-- `GET /api/v1/catalog/products/` — список товаров (каталог)
+- `POST /api/v1/send-email-request/` — заявка с телефона и ссылки
+- `GET /api/v1/catalog/filters/` — дерево разделов, бренды и доступные фильтры
+- `GET /api/v1/catalog/products/` — список товаров каталога
 - `GET /api/v1/catalog/products/{id}/` — карточка товара
 - `GET /api/v1/catalog/portfolio/` — список портфолио
 - `GET /api/v1/catalog/products/{product_id}/portfolio/` — портфолио товара
@@ -52,500 +53,505 @@
 - `GET /api/v1/catalog/manufacturers/{id}/` — карточка производителя
 - `GET /api/v1/catalog/banners/` — список баннеров
 
----
-
-## 5. Filters API
+## 4. Catalog Filters API
 
 ### `GET /api/v1/catalog/filters/`
 
-Возвращает:
+Возвращает данные для построения каталожных фильтров. Endpoint можно вызывать без параметров или с текущими выбранными фильтрами в query-параметре `filters`.
 
-- `sections` — дерево разделов
-- `manufacturers` — список активных брендов + количество активных товаров в каждом (`count`)
-- `filters` — конфигурация фильтров для каталога
-- `sorting` — доступные варианты сортировки
+`filters` передается как JSON-строка, закодированная для URL:
 
-### sections (дерево)
+```js
+const filters = encodeURIComponent(JSON.stringify([
+  { type: "section", ids: [3] },
+  { type: "manufacturer", ids: [7] }
+]));
 
-- В корне только разделы: `is_active=true` и `parent=null`
-- В `children` попадают только активные дочерние разделы
-- Сортировка в каждом уровне: `ordering`, затем `name`
-- `count` у раздела = количество **активных** товаров в разделе + всех дочерних разделах
+fetch(`/api/v1/catalog/filters/?filters=${filters}`);
+```
 
-Пример элемента раздела:
+Если `filters` невалидный JSON или не массив объектов, ответ будет `400`:
 
 ```json
 {
-  "id": 1,
-  "name": "Основные печи",
-  "slug": "main_oven",
-  "description_main": "",
-  "image": "/media/sections/images/main.png",
-  "browser_title": "",
-  "description": "",
-  "meta_description": "",
-  "meta_keywords": "",
-  "ordering": 1,
-  "count": 12,
-  "children": []
+  "detail": "Некорректный формат filters. Ожидается JSON-список объектов."
 }
 ```
 
-### manufacturers в этом endpoint
-
-Поля:
-
-- `id`
-- `name`
-- `slug`
-- `logo`
-- `priority`
-- `count` — количество активных товаров бренда
-
-### sorting в этом endpoint
-
-Текущие варианты:
-
-- `new` — сначала новые
-- `popular` — сначала хиты с `priority` от `1`, затем хиты без `priority`, затем остальные; внутри одинаковых групп по новизне
-- `price_asc` — по возрастанию итоговой цены
-- `price_desc` — по убыванию итоговой цены
-
-Пример:
-
-```json
-[
-  { "value": "new", "label": "Сначала новые" },
-  { "value": "popular", "label": "Сначала популярные" },
-  { "value": "price_asc", "label": "Сначала дешёвые" },
-  { "value": "price_desc", "label": "Сначала дорогие" }
-]
-```
-
-### filters в этом endpoint
-
-`filters` — массив конфигов. Основные типы:
-
-- `range`
-- `select`
-- `boolean`
-
-Примеры:
+### Структура ответа
 
 ```json
 {
-  "field": "price",
-  "label": "Цена",
-  "type": "range",
-  "min": 10000,
-  "max": 300000,
-  "params": { "min": "price_from", "max": "price_to" }
-}
-```
-
-```json
-{
-  "field": "fuel_type",
-  "label": "Тип топлива",
-  "type": "select",
-  "options": [
-    { "value": "wood", "label": "Дровяная", "count": 10 },
-    { "value": "gas", "label": "Газовая", "count": 3 }
-  ]
-}
-```
-
-```json
-{
-  "field": "heated_volume",
-  "label": "Площадь/объём отопления",
-  "type": "select",
-  "options": [
-    { "value": 100, "label": "100", "count": 7 },
-    { "value": 150, "label": "150", "count": 4 }
-  ]
-}
-```
-
-`heated_volume` формируется из уникальных значений в БД (только `is_active=true`), не из фиксированных `choices`.
-
-```json
-{
-  "field": "water_circuit",
-  "label": "Водяной контур",
-  "type": "boolean",
-  "count": 5
-}
-```
-
-```json
-{
-  "field": "discount",
-  "label": "Со скидкой",
-  "type": "boolean"
-}
-```
-
----
-
-## 6. Products Catalog API
-
-### `GET /api/v1/catalog/products/`
-
-Список активных товаров (`is_active=true`).
-
-### 6.1 Поддерживаемые query-параметры
-
-#### Текстовый поиск
-
-- `search` — поиск по `name` (icontains)
-
-#### Мульти-фильтры
-
-Передаются повторением ключа:
-
-- `section=1&section=2`
-- `manufacturer=3&manufacturer=7`
-- `fuel_type=wood&fuel_type=gas`
-- аналогично для остальных `select`-полей
-
-#### Список select-полей
-
-- `fuel_type`
-- `heated_volume`
-- `lining_material`
-- `firebox_material`
-- `firebox_type`
-- `installation_type`
-- `glass_count`
-- `fire_view`
-- `heater_type`
-- `stone_material`
-- `tank_type`
-- `door_mechanism`
-- `chimney_connection`
-- `chimney_diameter`
-
-#### Boolean-поля
-
-- `water_circuit`
-- `long_fire`
-- `heat_exchanger`
-- `glass_lift`
-- `damper`
-- `cooking_panel`
-- `oven`
-- `discount` (только товары с заполненным `discount_price`)
-
-Поддерживаются обычные булевы значения (`true/false`, `1/0`, и т.д.).
-
-#### Range-поля
-
-- `price_from`, `price_to`
-- `power_kw_min`, `power_kw_max`
-- `steam_volume_from`, `steam_volume_to`
-
-#### Сортировка
-
-- `ordering=new`
-- `ordering=popular` — сначала хиты с `priority` от `1`, затем хиты без `priority`, затем остальные
-- `ordering=price_asc`
-- `ordering=price_desc`
-- если передано неизвестное значение, используется `new`
-
-### 6.2 Важная логика фильтрации
-
-- Фильтр по `section` включает выбранный раздел + всех его активных потомков
-- Фильтр по `manufacturer` возвращает товары только активных брендов
-- Цена фильтруется по `final_price`:
-  - если `discount_price` задана, используется она
-  - иначе используется `price`
-- `discount=true` возвращает только товары, где `discount_price` не `null`
-- Фильтр по `steam_volume_*` работает по пересечению диапазонов:
-  - `steam_volume_to >= steam_volume_from(query)`
-  - `steam_volume_from <= steam_volume_to(query)`
-- Неизвестные query-параметры игнорируются
-
-### 6.3 Пример запроса
-
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=печь&section=1&manufacturer=2&fuel_type=wood&price_from=50000&price_to=150000&ordering=price_asc&page=1&page_size=9"
-```
-
-### 6.4 Структура элемента в `results`
-
-Поля:
-
-- `id`
-- `name`
-- `sections` — массив breadcrumb-путей
-- `manufacturer` — объект `{ "name": ... }`
-- `is_new`
-- `is_bestseller`
-- `priority`
-- `has_video` — есть связанные видео товара
-- `price`
-- `discount_price`
-- `power_kw`
-- `images` — массив `{image, is_main, ordering}`
-
-Пример ответа:
-
-```json
-{
-  "count": 1,
-  "next": null,
-  "previous": null,
-  "results": [
+  "sections": [
     {
-      "id": 15,
-      "name": "Тестовая печь",
-      "sections": [
-        [
-          { "id": 1, "name": "Основные печи", "slug": "main_oven" },
-          { "id": 2, "name": "Дровяные печи", "slug": "wood_oven" }
-        ]
-      ],
-      "manufacturer": { "name": "Harvia" },
-      "is_new": false,
-      "is_bestseller": true,
-      "priority": 1,
-      "has_video": true,
-      "price": 100000,
-      "discount_price": 90000,
-      "power_kw": 12,
-      "images": [
-        {
-          "image": "http://127.0.0.1:8000/media/products/images/test.jpg",
-          "is_main": true,
-          "ordering": 0
-        }
-      ]
+      "id": 1,
+      "name": "Каталог",
+      "slug": "catalog-root",
+      "products_count": 5,
+      "children": []
+    }
+  ],
+  "price": {
+    "min": 45000,
+    "max": 210000
+  },
+  "has_discount": true,
+  "manufacturers": [
+    {
+      "id": 1,
+      "name": "Aurora",
+      "slug": "aurora",
+      "logo": "manufacturers/aurora.webp",
+      "products_count": 3
+    }
+  ],
+  "attributes": []
+}
+```
+
+- `sections` возвращаются всегда, только активные, с любой вложенностью.
+- `products_count` у раздела учитывает товары в самом разделе и во всех дочерних разделах.
+- Разделы без товаров не скрываются, у них `products_count: 0`.
+- `price.min/max` считаются по итоговой цене товара: `discount_price`, если она есть, иначе `price`.
+- `manufacturers` и `attributes` могут отсутствовать, если для текущей выборки нет данных.
+- Все счетчики и диапазоны пересчитываются с учетом переданного `filters`.
+
+### Форматы атрибутов
+
+`choice`:
+
+```json
+{
+  "id": 10,
+  "name": "Тип топлива",
+  "slug": "fuel-type",
+  "type": "choice",
+  "unit": "",
+  "allow_multiple": false,
+  "products_count": 4,
+  "options": [
+    {
+      "id": 101,
+      "value": "Дрова",
+      "slug": "wood",
+      "products_count": 2
     }
   ]
 }
 ```
 
-### 6.5 Как читать `sections` в товарах
+`number`:
 
-`sections` — это не просто список категорий, а список путей (breadcrumb):
-
-```text
-sections = [
-  [root, ..., leaf],
-  [root2, ..., leaf2]
-]
+```json
+{
+  "id": 11,
+  "name": "Мощность",
+  "slug": "moshchnost",
+  "type": "number",
+  "unit": "кВт",
+  "allow_multiple": false,
+  "products_count": 4,
+  "min": 10.0,
+  "max": 22.0
+}
 ```
 
-Если товар привязан к нескольким разделам, путей будет несколько.
+`boolean`:
 
----
+```json
+{
+  "id": 12,
+  "name": "Водяной контур",
+  "slug": "water-circuit",
+  "type": "boolean",
+  "unit": "",
+  "allow_multiple": false,
+  "products_count": 4,
+  "values": [
+    { "value": true, "products_count": 2 },
+    { "value": false, "products_count": 2 }
+  ]
+}
+```
 
-## 7. Product Detail API
+## 5. Products Catalog API
 
-### `GET /api/v1/catalog/products/{id}/`
+### `GET /api/v1/catalog/products/`
 
-Возвращает детальную карточку активного товара (`is_active=true`).
+Возвращает активные товары каталога (`is_active=true`) с пагинацией.
 
-Если товар не найден или неактивен: `404`.
-
-### 7.1 Что возвращается
-
-- Все поля модели `Product`
-- `manufacturer` в формате `{ id, name }`
-- `sections` в формате breadcrumb-путей
-- `images` — `{ image, is_main, ordering }`
-- `documents` — `{ title, file }`
-- Видео товара возвращаются отдельным endpoint `/api/v1/catalog/products/{product_id}/videos/`
-- Автоматически добавляются `*_display` для полей с `choices`
-
-### 7.2 Поля модели Product (текущий набор)
-
-- `id`, `name`, `slug`
-- `manufacturer`
-- `description`, `video_preview`, `schema`
-- `price`, `discount_price`
-- `free_delivery`, `in_stock`, `is_active`, `is_new`, `is_bestseller`
-- `priority`, `sku`, `series`
-- `heated_volume`, `power_kw`, `lining_material`, `fuel_type`, `firebox_material`, `firebox_type`, `installation_type`
-- `glass_count`, `fire_view`, `heater_type`, `water_circuit`, `stone_material`, `tank_type`, `door_mechanism`
-- `chimney_diameter`, `chimney_connection`
-- `dimensions`, `weight`
-- `steam_volume_from`, `steam_volume_to`
-- `stone_weight`, `closed_heater_volume`, `warranty_years`, `efficiency`
-- `long_fire`, `heat_exchanger`, `glass_lift`, `damper`, `cooking_panel`
-- `oven_weight`, `oven`
-- `seo_title`, `seo_description`, `seo_keywords`
-- `created_at`, `updated_at`
-
-### 7.3 Пример запроса
+Каталог использует тот же query-параметр `filters`, что и `/catalog/filters/`:
 
 ```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/15/"
+curl "http://127.0.0.1:8000/api/v1/catalog/products/?filters=%5B%7B%22type%22%3A%22section%22%2C%22ids%22%3A%5B3%5D%7D%5D&page=1&page_size=9"
 ```
 
-### 7.4 Пример ответа (сокращенный)
+### Поддерживаемые фильтры
+
+Между объектами фильтра применяется `AND`. Внутри `ids` и `option_ids` применяется `OR`.
+
+Раздел:
+
+```json
+{ "type": "section", "ids": [3, 4] }
+```
+
+Фильтр по разделу включает выбранные разделы и всех активных потомков.
+
+Производитель:
+
+```json
+{ "type": "manufacturer", "ids": [7, 8] }
+```
+
+Вариант характеристики:
+
+```json
+{
+  "type": "choice",
+  "attribute_id": 10,
+  "option_ids": [101, 102]
+}
+```
+
+Числовая характеристика:
+
+```json
+{
+  "type": "number",
+  "attribute_id": 11,
+  "gte": "10",
+  "lte": "20"
+}
+```
+
+Boolean-характеристика:
+
+```json
+{
+  "type": "boolean",
+  "attribute_id": 12,
+  "value": true
+}
+```
+
+Цена:
+
+```json
+{
+  "type": "price",
+  "gte": 50000,
+  "lte": 150000
+}
+```
+
+Цена фильтруется по итоговой цене товара: `discount_price`, если она есть, иначе `price`.
+
+Скидка:
+
+```json
+{
+  "type": "has_discount",
+  "value": true
+}
+```
+
+`has_discount=true` возвращает товары с заполненным `discount_price`. `has_discount=false` возвращает товары без скидки.
+
+Старые query-параметры каталога вроде `section=`, `manufacturer=`, `fuel_type=`, `price_from=`, `price_to=`, `search=` и `ordering=` сейчас не являются контрактом `GET /catalog/products/`.
+
+### Сортировка каталога
+
+Отдельный query-параметр сортировки сейчас не используется. Текущий порядок выдачи:
+
+1. хиты (`is_bestseller=true`) с `priority`, где `1` — самый высокий приоритет;
+2. хиты без `priority`;
+3. товары с `priority`, но без флага хита;
+4. остальные товары, внутри группы сначала новые.
+
+### Элемент в `results`
 
 ```json
 {
   "id": 15,
-  "name": "Тестовая печь MAX PRO",
-  "slug": "testovaya-pech-max-pro",
-  "manufacturer": { "id": 3, "name": "Harvia" },
+  "name": "Aurora Pro 18 Duo",
   "sections": [
     [
-      { "id": 1, "name": "Основные печи", "slug": "main_oven" },
-      { "id": 2, "name": "Дровяные печи", "slug": "wood_oven" }
+      { "id": 1, "name": "Каталог", "slug": "catalog-root" },
+      { "id": 2, "name": "Банные печи", "slug": "sauna-stoves" },
+      { "id": 3, "name": "Дровяные печи", "slug": "wood-fired-stoves" }
     ]
   ],
-  "price": 150000,
-  "discount_price": 120000,
+  "manufacturer": "Aurora",
+  "is_new": true,
+  "is_bestseller": true,
   "priority": 1,
-  "fuel_type": "wood",
-  "fuel_type_display": "Дровяная",
-  "power_kw": 14,
-  "water_circuit": true,
-  "heat_exchanger": true,
+  "has_video": true,
+  "price": 162000,
+  "discount_price": 129000,
+  "power": {
+    "name": "Мощность",
+    "slug": "moshchnost",
+    "value": "18.50",
+    "unit": "кВт"
+  },
   "images": [
     {
-      "image": "http://127.0.0.1:8000/media/products/images/test_main.jpg",
-      "is_main": true,
-      "ordering": 0
+      "id": 1,
+      "image": "/media/products/images/aurora-pro-main.webp",
+      "ordering": 20,
+      "is_main": true
     }
-  ],
-  "documents": [
-    {
-      "title": "Инструкция",
-      "file": "http://127.0.0.1:8000/media/products/documents/manual.pdf"
-    }
-  ],
-  "created_at": "2026-03-07T12:44:10.123456+0000",
-  "updated_at": "2026-03-07T12:44:10.123456+0000"
+  ]
 }
 ```
 
-### 7.5 Видео товара
+Особенности:
 
-### `GET /api/v1/catalog/products/{product_id}/videos/`
+- `manufacturer` — строка с названием бренда или `null`.
+- `sections` — массив breadcrumb-путей. Каждый путь идет от корневого раздела к разделу товара.
+- `power` берется из числовой характеристики со slug `moshchnost`; если значения нет, будет `null`.
+- `images` сортируются так, чтобы главное изображение было первым, затем `ordering`, затем `id`.
+- `is_main` в изображении приходит только у главного изображения; у остальных ключ может отсутствовать.
 
-Возвращает список видео активного товара без пагинации.
+Если товар привязан к нескольким разделам, в `sections` будет несколько путей. Для хлебных крошек страницы товара можно взять нужный путь и добавить перед ним `Главная`, а после него название товара:
 
-Поля элемента:
+```text
+Главная / Каталог / Банные печи / Электрокаменка Эверест Черный Кристалл (Black Crystal) с пультом - 6кВт
+```
 
-- `id`
-- `url`
-- `ordering`
+## 6. Product Detail API
 
-Сортировка: `ordering`, затем `id`.
+### `GET /api/v1/catalog/products/{id}/`
+
+Возвращает детальную карточку активного товара. Если товар не найден или неактивен, ответ будет `404`.
+
+```json
+{
+  "id": 15,
+  "name": "Harvia Legend GreenFlame 240 Duo",
+  "slug": "harvia-legend-greenflame-240-duo",
+  "manufacturer": "Harvia Legend",
+  "price": 189900,
+  "discount_price": 174500,
+  "description": "Подробное описание товара",
+  "is_new": true,
+  "is_bestseller": true,
+  "priority": 7,
+  "created_at": "2026-03-07T12:44:10.123456+0000",
+  "sections": [
+    [
+      { "id": 1, "name": "Каталог", "slug": "catalog-root" },
+      { "id": 2, "name": "Банные печи", "slug": "sauna-stoves" }
+    ]
+  ],
+  "images": [],
+  "videos": [],
+  "documents": [],
+  "attributes": []
+}
+```
+
+Текущий detail-контракт отдает только перечисленные поля. SEO-поля, `sku`, `series`, `schema`, `video_preview`, `in_stock` и `free_delivery` сейчас в ответе detail не приходят.
+
+### Изображения, видео, документы
+
+`images`:
+
+```json
+{
+  "id": 1,
+  "image": "/media/products/images/legend-main.webp",
+  "ordering": 10,
+  "is_main": true
+}
+```
+
+`videos`:
+
+```json
+{
+  "id": 1,
+  "url": "https://www.youtube.com/watch?v=legend-installation",
+  "preview_url": "https://img.youtube.com/vi/legend-installation/maxresdefault.jpg",
+  "ordering": 10
+}
+```
+
+`documents`:
+
+```json
+{
+  "id": 1,
+  "title": "Инструкция по монтажу",
+  "file": "/media/products/documents/legend-installation.pdf",
+  "ordering": 20
+}
+```
+
+### Характеристики товара
+
+Все технические характеристики товара приходят в `attributes`.
+
+`choice` с одним значением:
+
+```json
+{
+  "id": 10,
+  "name": "Тип топлива",
+  "slug": "fuel-type",
+  "type": "choice",
+  "value": {
+    "id": 101,
+    "name": "Дрова",
+    "slug": "wood"
+  }
+}
+```
+
+`choice` с несколькими значениями:
+
+```json
+{
+  "id": 11,
+  "name": "Материалы отделки",
+  "slug": "finish-materials",
+  "type": "choice",
+  "value": [
+    { "id": 201, "name": "Талькохлорит", "slug": "soapstone" },
+    { "id": 202, "name": "Нержавеющая сталь", "slug": "stainless-steel" }
+  ]
+}
+```
+
+`number`:
+
+```json
+{
+  "id": 12,
+  "name": "Мощность",
+  "slug": "power-kw",
+  "type": "number",
+  "unit": "кВт",
+  "value": "18.50"
+}
+```
+
+`boolean`:
+
+```json
+{
+  "id": 13,
+  "name": "Водяной контур",
+  "slug": "water-circuit",
+  "type": "boolean",
+  "value": true
+}
+```
+
+`text`:
+
+```json
+{
+  "id": 14,
+  "name": "Комментарий к монтажу",
+  "slug": "installation-note",
+  "type": "text",
+  "value": "Нужен негорючий экран"
+}
+```
+
+## 7. Portfolio API
+
+### `GET /api/v1/catalog/portfolio/`
+
+Список портфолио, сортировка: новые сначала (`-created_at`).
+
+Query-параметры:
+
+- `product` — ID товара
+- `section` — ID раздела; учитывается выбранный раздел и дочерние разделы
+- `manufacturer` — ID производителя; можно передавать повтором или CSV: `manufacturer=1&manufacturer=2` или `manufacturer=1,2`
+- `main=true` — только записи для главной
+
+Если `product`, `section` или `manufacturer` переданы не числом, ответ будет `400`. Если `section` не найден, ответ будет `404`.
 
 Пример:
 
 ```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/15/videos/"
+curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&manufacturer=1,2&main=true&page=1&page_size=9"
 ```
 
-Пример ответа:
+Элемент в `results`:
 
 ```json
-[
-  {
-    "id": 1,
-    "url": "https://youtube.com/watch?v=test",
-    "ordering": 0
-  }
-]
+{
+  "id": 1,
+  "title": "Монтаж печи",
+  "main": true,
+  "duration": 7,
+  "date": "2026-03-07",
+  "object_type": "Баня",
+  "price": 150000,
+  "video_link": "https://example.com/video",
+  "type_work": "Монтаж",
+  "product_id": 15,
+  "product_name": "Aurora Pro 18 Duo",
+  "images": [
+    {
+      "id": 1,
+      "image": "/media/portfolio_image/example.webp",
+      "order": 0
+    }
+  ],
+  "created_at": "2026-03-07T12:44:10.123456+0000"
+}
 ```
 
----
+### `GET /api/v1/catalog/products/{product_id}/portfolio/`
 
-## 8. Portfolio API
+Возвращает портфолио конкретного товара. Остальные query-параметры работают так же, как у общего списка.
 
-### 8.1 `GET /api/v1/catalog/portfolio/`
+## 8. Reviews API
 
-Список портфолио, сортировка: новые сначала (`-created_at`).
-
-### 8.2 `GET /api/v1/catalog/products/{product_id}/portfolio/`
-
-Список портфолио конкретного товара.
-
-### 8.3 Query-параметры (`/catalog/portfolio/`)
-
-- `product` — ID товара
-- `section` — ID раздела (включая дочерние)
-- `manufacturer` — ID производителя
-- `main=true` — только записи для главной
-
-### 8.4 Пример
-
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&main=true&page=1&page_size=9"
-```
-
-### 8.5 Элемент в `results`
-
-- `id`
-- `title`
-- `main`
-- `duration`
-- `date`
-- `object_type`
-- `price`
-- `video_link`
-- `type_work`
-- `product_id`
-- `product_name`
-- `images` — `{id, image, order}`
-- `created_at`
-
----
-
-## 9. Reviews API
-
-### 9.1 `GET /api/v1/catalog/reviews/`
+### `GET /api/v1/catalog/reviews/`
 
 Список всех отзывов, сортировка по убыванию `created_at`.
 
-### 9.2 `GET /api/v1/catalog/products/{product_id}/reviews/`
+### `GET /api/v1/catalog/products/{product_id}/reviews/`
 
-Список отзывов товара.
+Список отзывов конкретного товара.
 
-### 9.3 Пример
+Элемент в `results`:
 
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/products/15/reviews/?page=1&page_size=9"
+```json
+{
+  "id": 1,
+  "name": "Отзыв",
+  "client_name": "Иван",
+  "installation_time": "2 дня",
+  "location": "Екатеринбург",
+  "date": "2026-03-07",
+  "work_description": "Описание работ",
+  "price": 150000,
+  "video_url": "https://example.com/video",
+  "preview_image": "/media/reviews/example.webp",
+  "product_id": 15,
+  "product_name": "Aurora Pro 18 Duo",
+  "created_at": "2026-03-07T12:44:10.123456+0000"
+}
 ```
 
-### 9.4 Элемент в `results`
+## 9. Manufacturers API
 
-- `id`
-- `name`
-- `client_name`
-- `installation_time`
-- `location`
-- `date`
-- `work_description`
-- `price`
-- `video_url`
-- `preview_image`
-- `product_id`
-- `product_name`
-- `created_at`
+### `GET /api/v1/catalog/manufacturers/`
 
----
-
-## 10. Manufacturers API
-
-### 10.1 `GET /api/v1/catalog/manufacturers/`
-
-Возвращает только активных производителей (`is_active=true`).
+Возвращает активных производителей (`is_active=true`) с пагинацией.
 
 Query-параметры:
 
-- `ordering=priority` — сортировка по `-priority`, затем `name`
-- без `ordering` — кастомная сортировка:
-  - сначала бренд с именем `Печи Мельника` (если есть),
-  - затем группы: `цифры -> латиница -> кириллица -> прочее`,
-  - внутри группы: по `name` (case-insensitive).
+- `ordering=priority` — сортировка по `priority` по убыванию, затем `name`
+- без `ordering` — кастомная сортировка: цифры, латиница, кириллица, прочее; внутри группы по `name`
 
 Поля элемента:
 
@@ -555,34 +561,26 @@ Query-параметры:
 - `logo`
 - `priority`
 
-Пример:
+### `GET /api/v1/catalog/manufacturers/{id}/`
 
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/?ordering=priority&page=1&page_size=9"
-```
-
-### 10.2 `GET /api/v1/catalog/manufacturers/{id}/`
-
-Карточка конкретного активного производителя.
-
-Если `is_active=false` или id не найден: `404`.
+Карточка активного производителя. Если производитель не найден или неактивен, ответ будет `404`.
 
 Поля:
 
-- `id`, `name`, `slug`, `is_active`, `logo`, `priority`
-- `seo_title`, `seo_description`, `seo_keywords`
-- `short_description`, `description`, `video`
-- `images` — `{id, image, ordering}`
+- `id`
+- `name`
+- `slug`
+- `is_active`
+- `logo`
+- `priority`
+- `seo_title`
+- `seo_description`
+- `seo_keywords`
+- `description`
+- `video`
+- `images` — массив `{ id, image, ordering }`
 
-Пример:
-
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/manufacturers/3/"
-```
-
----
-
-## 11. Banners API
+## 10. Banners API
 
 ### `GET /api/v1/catalog/banners/`
 
@@ -593,49 +591,46 @@ Query-параметры:
 
 Логика:
 
-- если передан `section`, вернутся баннеры раздела + глобальные (без раздела)
-- если передан `brand`, вернутся баннеры бренда + глобальные (без бренда)
-- если переданы оба, применяются оба условия
+- если передан `section`, вернутся баннеры выбранного раздела и глобальные баннеры без раздела;
+- если передан `brand`, вернутся баннеры выбранного производителя и глобальные баннеры без производителя;
+- если переданы оба параметра, применяются оба условия.
 
 Поля элемента:
 
 - `id`
 - `title`
 - `image`
-- `link` — URL для перехода по баннеру
+- `link`
 
-Пример:
+## 11. Send Email Request API
 
-```bash
-curl "http://127.0.0.1:8000/api/v1/catalog/banners/?section=1&brand=2&page=1&page_size=9"
+### `POST /api/v1/send-email-request/`
+
+Тело запроса:
+
+```json
+{
+  "phone": "+7 999 000-00-00",
+  "link": "https://kamini-melnika.ru/catalog/products/15"
+}
 ```
 
----
+Правила:
+
+- `phone` — строка от 5 до 20 символов после trim;
+- `link` должен вести на `kamini-melnika.ru` или `www.kamini-melnika.ru`.
+
+Успешный ответ:
+
+```json
+{
+  "status": "ok"
+}
+```
 
 ## 12. Healthcheck
 
 ### `GET /api/v1/health/`
 
 - `200`: `{ "status": "ok" }`
-- `503`: `{ "status": "db_error" }` (нет соединения с БД)
-
----
-
-## 13. Ошибки и пограничные случаи
-
-- Не найден detail-объект: `404` + стандартный DRF ответ (`{"detail":"Not found."}`)
-- Невалидные значения фильтров каталога (например неизвестный choice): `400`
-- Неизвестные query-параметры в каталоге товаров: игнорируются
-- Для boolean-фильтров каталога ориентируйтесь на явную передачу параметров:
-  не отправляйте лишние boolean-ключи в query string, если не хотите фильтрацию по ним
-- Все list endpoint отдают paginated-структуру (`count/next/previous/results`)
-
----
-
-## 14. Рекомендации для фронтенда
-
-1. Храните query state как объект фильтров и сериализуйте повторяющиеся параметры через повтор ключа (`field=a&field=b`).
-2. Для каталога используйте `/catalog/filters/` как единственный источник метаданных фильтрации и сортировок.
-3. Для хлебных крошек всегда используйте `sections` из ответа товара (там уже готовый путь).
-4. Всегда проверяйте `next` и `previous` для пагинации; не рассчитывайте количество страниц вручную.
-5. Для цены в карточках/листинге учитывайте `discount_price` как приоритетную цену показа.
+- `503`: `{ "status": "db_error" }`

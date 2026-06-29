@@ -4,441 +4,277 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from main_app.models import Product
-from main_app.models.section import Section
-from main_app.models.manufacturer import Manufacturer
+from main_app.tests.catalog_filter_data import create_catalog_filter_dataset
 
 
-@pytest.mark.django_db
-def test_catalog_filters_api():
+def _section_by_slug(sections, slug):
+    for section in sections:
+        if section["slug"] == slug:
+            return section
 
-    client = APIClient()
+        found = _section_by_slug(section["children"], slug)
 
-    # ---------------- SECTIONS ----------------
+        if found:
+            return found
 
-    parent = Section.objects.create(
-        name="Основные печи",
-        slug="main_oven",
-        ordering=1,
-    )
+    return None
 
-    Section.objects.create(
-        name="Дровяные печи",
-        slug="wood_oven",
-        parent=parent,
-        ordering=1,
-    )
 
-    # ---------------- MANUFACTURERS ----------------
+def _attribute_by_slug(attributes, slug):
+    return next(item for item in attributes if item["slug"] == slug)
 
-    plamen = Manufacturer.objects.create(
-        name="Plamen",
-        slug="plamen",
-        is_active=True,
-    )
 
-    easysteam = Manufacturer.objects.create(
-        name="EasySteam",
-        slug="easysteam",
-        is_active=True,
-    )
-
-    # ---------------- PRODUCTS ----------------
-
-    product_a = Product.objects.create(
-        name="Печь A",
-        price=10000,
-        power_kw=10,
-        heated_volume=100,
-        chimney_diameter="115",
-        manufacturer=plamen,
-        is_active=True,
-    )
-
-    product_b = Product.objects.create(
-        name="Печь B",
-        price=20000,
-        discount_price=18000,
-        oven=True,
-        power_kw=20,
-        heated_volume=150,
-        chimney_diameter="120",
-        manufacturer=easysteam,
-        is_active=True,
-    )
-
-    product_c = Product.objects.create(
-        name="Печь C",
-        price=30000,
-        power_kw=30,
-        heated_volume=100,
-        chimney_diameter="115",
-        manufacturer=plamen,
-        is_active=True,
-    )
-
-    child_section = Section.objects.get(slug="wood_oven")
-
-    product_a.sections.add(parent)
-    product_b.sections.add(child_section)
-    product_c.sections.add(child_section)
-
-    # ---------------- REQUEST ----------------
-
-    url = reverse("catalog-filters")
-
-    response = client.get(url)
-
-    assert response.status_code == 200
-
-    data = response.json()
-
-    print("\n\n========== FILTERS ==========")
-    print(json.dumps(data, indent=4, ensure_ascii=False))
-    print("=============================\n\n")
-
-    # ---------------- SECTIONS ----------------
-
-    assert "sections" in data
-    assert len(data["sections"]) == 1
-
-    parent_section = data["sections"][0]
-
-    assert parent_section["name"] == "Основные печи"
-
-    assert len(parent_section["children"]) == 1
-    assert parent_section["children"][0]["name"] == "Дровяные печи"
-
-    # ---------------- MANUFACTURERS ----------------
-
-    assert "manufacturers" in data
-    assert len(data["manufacturers"]) == 2
-
-    manufacturer_names = [m["name"] for m in data["manufacturers"]]
-
-    assert "Plamen" in manufacturer_names
-    assert "EasySteam" in manufacturer_names
-
-    # ---------------- FILTERS ----------------
-
-    assert "filters" in data
-
-    filters = data["filters"]
-
-    assert isinstance(filters, list)
-    assert len(filters) > 0
-
-    # проверяем структуру фильтра
-    first_filter = filters[0]
-
-    assert "field" in first_filter
-    assert "label" in first_filter
-    assert "type" in first_filter
-
-    # ---------------- PRICE RANGE ----------------
-
-    price_filter = next(
-        f for f in filters if f["field"] == "price"
-    )
-
-    assert price_filter["type"] == "range"
-
-    assert price_filter["min"] == 10000
-    assert price_filter["max"] == 30000
-
-    assert price_filter["params"]["min"] == "price_from"
-    assert price_filter["params"]["max"] == "price_to"
-
-    # ---------------- CHIMNEY DIAMETER ----------------
-
-    chimney_filter = next(
-        f for f in filters if f["field"] == "chimney_diameter"
-    )
-
-    assert chimney_filter["type"] == "select"
-
-    options = chimney_filter["options"]
-
-    values = [o["value"] for o in options]
-
-    assert "115" in values
-    assert "120" in values
-
-    # должны быть только уникальные значения
-    assert len(values) == 2
-
-    # ---------------- POWER RANGE ----------------
-
-    power_filter = next(
-        f for f in filters if f["field"] == "power_kw"
-    )
-
-    assert power_filter["type"] == "range"
-
-    assert power_filter["params"]["min"] == "power_kw_min"
-    assert power_filter["params"]["max"] == "power_kw_max"
-
-    # ---------------- HEATED VOLUME ----------------
-
-    heated_filter = next(
-        f for f in filters if f["field"] == "heated_volume"
-    )
-
-    assert heated_filter["type"] == "select"
-
-    heated_options = heated_filter["options"]
-
-    heated_values = [o["value"] for o in heated_options]
-
-    assert heated_values == [100, 150]
-
-    heated_counts = {
-        o["value"]: o["count"]
-        for o in heated_options
+def _option_counts(attribute):
+    return {
+        option["slug"]: option["products_count"]
+        for option in attribute["options"]
     }
 
-    assert heated_counts[100] == 2
-    assert heated_counts[150] == 1
 
-    # ---------------- DISCOUNT ----------------
-
-    discount_filter = next(
-        f for f in filters if f["field"] == "discount"
-    )
-
-    assert discount_filter["type"] == "boolean"
-    assert discount_filter["count"] == 1
-
-    # ---------------- OVEN ----------------
-
-    oven_filter = next(
-        f for f in filters if f["field"] == "oven"
-    )
-
-    assert oven_filter["type"] == "boolean"
-    assert oven_filter["count"] == 1
-
-    # ---------------- SORTING ----------------
-
-    assert "sorting" in data
-
-    sorting = data["sorting"]
-
-    assert isinstance(sorting, list)
-    assert len(sorting) > 0
-
-    sorting_values = [s["value"] for s in sorting]
-
-    assert "new" in sorting_values
-    assert "popular" in sorting_values
-    assert "price_asc" in sorting_values
-    assert "price_desc" in sorting_values
+def _bool_counts(attribute):
+    return {
+        item["value"]: item["products_count"]
+        for item in attribute["values"]
+    }
 
 
 @pytest.mark.django_db
-def test_catalog_filters_manufacturers_default_order():
+def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     client = APIClient()
-
-    malnik = Manufacturer.objects.create(
-        name="Печи Мальника",
-        slug="malnik",
-        is_active=True,
-    )
-    thermo = Manufacturer.objects.create(
-        name="3Thermo",
-        slug="3thermo",
-        is_active=True,
-    )
-    zota = Manufacturer.objects.create(
-        name="Zota",
-        slug="zota",
-        is_active=True,
-    )
-    vezuviy = Manufacturer.objects.create(
-        name="Везувий",
-        slug="vezuviy",
-        is_active=True,
-    )
-
-    for manufacturer in [malnik, thermo, zota, vezuviy]:
-        Product.objects.create(
-            name=f"Печь {manufacturer.name}",
-            price=10000,
-            manufacturer=manufacturer,
-            is_active=True,
-        )
+    dataset = create_catalog_filter_dataset()
 
     response = client.get(reverse("catalog-filters"))
-    assert response.status_code == 200
-
-    names = [m["name"] for m in response.json()["manufacturers"]]
-    assert names == [
-        "3Thermo",
-        "Zota",
-        "Везувий",
-        "Печи Мальника",
-    ]
-
-
-@pytest.mark.django_db
-def test_catalog_filters_are_limited_by_selected_filters():
-    client = APIClient()
-
-    sauna = Section.objects.create(
-        name="Печи для бани",
-        slug="sauna",
-        ordering=1,
-    )
-    fireplace = Section.objects.create(
-        name="Камины",
-        slug="fireplace",
-        ordering=2,
-    )
-
-    brand_a = Manufacturer.objects.create(
-        name="Brand A",
-        slug="brand-a",
-        is_active=True,
-    )
-    brand_b = Manufacturer.objects.create(
-        name="Brand B",
-        slug="brand-b",
-        is_active=True,
-    )
-
-    matching = Product.objects.create(
-        name="Дровяная печь с духовкой",
-        price=10000,
-        fuel_type="wood",
-        heated_volume=100,
-        chimney_diameter="115",
-        oven=True,
-        manufacturer=brand_a,
-        is_active=True,
-    )
-    matching.sections.add(sauna)
-
-    wrong_fuel = Product.objects.create(
-        name="Газовая печь с духовкой",
-        price=20000,
-        fuel_type="gas",
-        heated_volume=150,
-        chimney_diameter="120",
-        oven=True,
-        manufacturer=brand_a,
-        is_active=True,
-    )
-    wrong_fuel.sections.add(sauna)
-
-    wrong_section = Product.objects.create(
-        name="Дровяной камин с духовкой",
-        price=30000,
-        fuel_type="wood",
-        heated_volume=200,
-        chimney_diameter="130",
-        oven=True,
-        manufacturer=brand_b,
-        is_active=True,
-    )
-    wrong_section.sections.add(fireplace)
-
-    response = client.get(reverse("catalog-filters"), {
-        "section": [sauna.id],
-        "fuel_type": ["wood"],
-        "oven": True,
-    })
-
-    assert response.status_code == 200
-
-    data = response.json()
-    filters = data["filters"]
-
-    fuel_filter = next(f for f in filters if f["field"] == "fuel_type")
-    assert [option["value"] for option in fuel_filter["options"]] == [
-        "wood",
-        "gas",
-    ]
-
-    heated_filter = next(f for f in filters if f["field"] == "heated_volume")
-    assert [option["value"] for option in heated_filter["options"]] == [100]
-
-    chimney_filter = next(f for f in filters if f["field"] == "chimney_diameter")
-    assert [option["value"] for option in chimney_filter["options"]] == ["115"]
-
-    assert [section["id"] for section in data["sections"]] == [sauna.id]
-    manufacturer_names = [
-        manufacturer["name"]
-        for manufacturer in data["manufacturers"]
-    ]
-    assert manufacturer_names == ["Brand A"]
-
-
-@pytest.mark.django_db
-def test_catalog_filters_keep_same_filter_options_for_or_selection():
-    client = APIClient()
-
-    brand_a = Manufacturer.objects.create(
-        name="Brand A",
-        slug="brand-a-or",
-        is_active=True,
-    )
-    brand_b = Manufacturer.objects.create(
-        name="Brand B",
-        slug="brand-b-or",
-        is_active=True,
-    )
-
-    Product.objects.create(
-        name="Brand A steel",
-        price=10000,
-        fuel_type="wood",
-        firebox_material="steel",
-        manufacturer=brand_a,
-        is_active=True,
-    )
-    Product.objects.create(
-        name="Brand A cast iron",
-        price=11000,
-        fuel_type="wood",
-        firebox_material="cast_iron",
-        manufacturer=brand_a,
-        is_active=True,
-    )
-    Product.objects.create(
-        name="Brand B steel",
-        price=12000,
-        fuel_type="gas",
-        firebox_material="steel",
-        manufacturer=brand_b,
-        is_active=True,
-    )
-
-    response = client.get(reverse("catalog-filters"), {
-        "manufacturer": [brand_a.id],
-        "firebox_material": ["steel"],
-    })
 
     assert response.status_code == 200
 
     data = response.json()
 
-    manufacturer_names = [
-        manufacturer["name"]
+    print("\n\n========== CATALOG FILTERS ==========")
+    print(json.dumps(data, indent=4, ensure_ascii=False))
+    print("=====================================\n\n")
+
+    assert data["price"] == {
+        "min": 45000,
+        "max": 210000,
+    }
+    assert data["has_discount"] is True
+
+    manufacturers = {
+        manufacturer["slug"]: manufacturer
         for manufacturer in data["manufacturers"]
+    }
+    assert list(manufacturers) == [
+        "aurora",
+        "bathlab",
     ]
-    assert manufacturer_names == ["Brand A", "Brand B"]
+    assert manufacturers["aurora"]["name"] == "Aurora"
+    assert manufacturers["aurora"]["logo"] == "manufacturers/aurora.webp"
+    assert manufacturers["aurora"]["products_count"] == 3
+    assert manufacturers["bathlab"]["products_count"] == 2
 
-    firebox_filter = next(
-        f for f in data["filters"]
-        if f["field"] == "firebox_material"
-    )
-    assert [option["value"] for option in firebox_filter["options"]] == [
-        "cast_iron",
-        "steel",
-    ]
+    root = _section_by_slug(data["sections"], "catalog-root")
+    stoves = _section_by_slug(data["sections"], "stoves")
+    wood = _section_by_slug(data["sections"], "wood-fired-stoves")
+    electric = _section_by_slug(data["sections"], "electric-stoves")
+    gas = _section_by_slug(data["sections"], "gas-stoves")
+    accessories = _section_by_slug(data["sections"], "accessories")
 
-    fuel_filter = next(
-        f for f in data["filters"]
-        if f["field"] == "fuel_type"
+    assert root["products_count"] == 5
+    assert stoves["products_count"] == 4
+    assert wood["products_count"] == 2
+    assert electric["products_count"] == 1
+    assert gas["products_count"] == 1
+    assert accessories["products_count"] == 2
+
+    attributes = data["attributes"]
+    assert {attribute["slug"] for attribute in attributes} == {
+        "finish-material",
+        "fuel-type",
+        "glass-lift",
+        "long-fire",
+        "moshchnost",
+        "steam-volume",
+        "water-circuit",
+    }
+
+    fuel = _attribute_by_slug(attributes, "fuel-type")
+    assert fuel["type"] == "choice"
+    assert fuel["allow_multiple"] is False
+    assert fuel["products_count"] == 4
+    assert _option_counts(fuel) == {
+        "electric": 1,
+        "gas": 1,
+        "wood": 2,
+    }
+
+    finish = _attribute_by_slug(attributes, "finish-material")
+    assert finish["type"] == "choice"
+    assert finish["allow_multiple"] is True
+    assert finish["products_count"] == 4
+    assert _option_counts(finish) == {
+        "cast-iron": 1,
+        "ceramic": 1,
+        "soapstone": 1,
+        "steel": 2,
+    }
+
+    power = _attribute_by_slug(attributes, "moshchnost")
+    assert power["type"] == "number"
+    assert power["unit"] == "кВт"
+    assert power["products_count"] == 4
+    assert power["min"] == 10.0
+    assert power["max"] == 22.0
+
+    steam_volume = _attribute_by_slug(attributes, "steam-volume")
+    assert steam_volume["unit"] == "м3"
+    assert steam_volume["products_count"] == 4
+    assert steam_volume["min"] == 12.0
+    assert steam_volume["max"] == 30.0
+
+    water_circuit = _attribute_by_slug(attributes, "water-circuit")
+    assert water_circuit["type"] == "boolean"
+    assert _bool_counts(water_circuit) == {
+        True: 2,
+        False: 2,
+    }
+
+    glass_lift = _attribute_by_slug(attributes, "glass-lift")
+    assert _bool_counts(glass_lift) == {
+        True: 2,
+        False: 2,
+    }
+
+    long_fire = _attribute_by_slug(attributes, "long-fire")
+    assert _bool_counts(long_fire) == {
+        True: 2,
+        False: 2,
+    }
+
+    filtered_response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "section",
+                        "ids": [dataset["sections"]["stoves"].id],
+                    },
+                    {
+                        "type": "manufacturer",
+                        "ids": [dataset["manufacturers"]["aurora"].id],
+                    },
+                    {
+                        "type": "boolean",
+                        "attribute_id": dataset["attributes"]["water_circuit"].id,
+                        "value": True,
+                    },
+                ]
+            )
+        },
     )
-    assert [option["value"] for option in fuel_filter["options"]] == ["wood"]
+
+    assert filtered_response.status_code == 200
+
+    filtered_data = filtered_response.json()
+
+    assert filtered_data["price"] == {
+        "min": 99000,
+        "max": 129000,
+    }
+    assert [
+        manufacturer["slug"]
+        for manufacturer in filtered_data["manufacturers"]
+    ] == ["aurora"]
+    assert filtered_data["manufacturers"][0]["products_count"] == 2
+
+    filtered_root = _section_by_slug(filtered_data["sections"], "catalog-root")
+    filtered_stoves = _section_by_slug(filtered_data["sections"], "stoves")
+    filtered_wood = _section_by_slug(
+        filtered_data["sections"],
+        "wood-fired-stoves",
+    )
+    filtered_electric = _section_by_slug(
+        filtered_data["sections"],
+        "electric-stoves",
+    )
+    filtered_gas = _section_by_slug(filtered_data["sections"], "gas-stoves")
+    filtered_accessories = _section_by_slug(
+        filtered_data["sections"],
+        "accessories",
+    )
+
+    assert filtered_root["products_count"] == 2
+    assert filtered_stoves["products_count"] == 2
+    assert filtered_wood["products_count"] == 2
+    assert filtered_electric["products_count"] == 0
+    assert filtered_gas["products_count"] == 0
+    assert filtered_accessories["products_count"] == 1
+
+    filtered_attributes = filtered_data["attributes"]
+
+    filtered_fuel = _attribute_by_slug(filtered_attributes, "fuel-type")
+    assert filtered_fuel["products_count"] == 2
+    assert _option_counts(filtered_fuel) == {
+        "wood": 2,
+    }
+
+    filtered_finish = _attribute_by_slug(filtered_attributes, "finish-material")
+    assert filtered_finish["products_count"] == 2
+    assert _option_counts(filtered_finish) == {
+        "soapstone": 1,
+        "steel": 2,
+    }
+
+    filtered_power = _attribute_by_slug(filtered_attributes, "moshchnost")
+    assert filtered_power["products_count"] == 2
+    assert filtered_power["min"] == 14.0
+    assert filtered_power["max"] == 18.5
+
+    filtered_water_circuit = _attribute_by_slug(
+        filtered_attributes,
+        "water-circuit",
+    )
+    assert _bool_counts(filtered_water_circuit) == {
+        True: 2,
+    }
+
+    filtered_glass_lift = _attribute_by_slug(
+        filtered_attributes,
+        "glass-lift",
+    )
+    assert _bool_counts(filtered_glass_lift) == {
+        False: 2,
+    }
+
+    filtered_long_fire = _attribute_by_slug(filtered_attributes, "long-fire")
+    assert _bool_counts(filtered_long_fire) == {
+        True: 1,
+        False: 1,
+    }
+
+
+@pytest.mark.parametrize(
+    "raw_filters",
+    [
+        "not-json",
+        "{}",
+        "[1]",
+    ],
+)
+def test_catalog_filters_api_returns_400_for_invalid_filters(raw_filters):
+    client = APIClient()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": raw_filters,
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": (
+            "Некорректный формат filters. "
+            "Ожидается JSON-список объектов."
+        )
+    }

@@ -38,11 +38,26 @@ class ProductDetailService:
             "is_bestseller": product.is_bestseller,
             "priority": product.priority,
             "created_at": product.created_at,
+            "sections": ProductDetailService._get_sections(product),
             "images": ProductDetailService._get_images(product),
             "videos": ProductDetailService._get_videos(product),
             "documents": ProductDetailService._get_documents(product),
             "attributes": ProductDetailService._get_attributes(product.id),
         }
+
+    @staticmethod
+    def _get_sections(product):
+        return [
+            [
+                {
+                    "id": section_item.id,
+                    "name": section_item.name,
+                    "slug": section_item.slug,
+                }
+                for section_item in section.get_path()
+            ]
+            for section in product.sections.all()
+        ]
 
     @staticmethod
     def _get_images(product):
@@ -90,33 +105,34 @@ class ProductDetailService:
         )
 
         attributes = []
-        used_attribute_ids = set()
+        attributes_by_id = {}
 
         for item in values:
             attribute = item.attribute
-
-            # Сейчас в detail нам нужно только одно значение на характеристику.
-            # Если вдруг в базе случайно будет несколько значений одной характеристики,
-            # берём первое и остальные игнорируем.
-            if attribute.id in used_attribute_ids:
-                continue
-
             value = ProductDetailService._get_attribute_value(item)
 
             if value is None:
                 continue
 
-            attributes.append({
-                "id": attribute.id,
-                "name": attribute.name,
-                "slug": attribute.slug,
-                "type": attribute.type,
-                "value": value,
-            })
-            if attribute.unit:
-                attributes[-1]["unit"] = attribute.unit
+            if attribute.id not in attributes_by_id:
+                attribute_data = {
+                    "id": attribute.id,
+                    "name": attribute.name,
+                    "slug": attribute.slug,
+                    "type": attribute.type,
+                    "value": [] if attribute.allow_multiple else value,
+                }
 
-            used_attribute_ids.add(attribute.id)
+                if attribute.unit:
+                    attribute_data["unit"] = attribute.unit
+
+                attributes_by_id[attribute.id] = attribute_data
+                attributes.append(attribute_data)
+
+            if attribute.allow_multiple:
+                attributes_by_id[attribute.id]["value"].append(value)
+
+                continue
 
         return attributes
 

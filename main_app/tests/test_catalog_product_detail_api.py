@@ -1,157 +1,298 @@
 import json
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 from main_app.models import (
     Product,
-    ProductImage,
+    ProductAttribute,
+    ProductAttributeOption,
+    ProductAttributeValue,
     ProductDocument,
+    ProductImage,
+    ProductVideo,
     Section,
 )
 from main_app.models.manufacturer import Manufacturer
 
 
-@pytest.mark.django_db
-def test_product_detail_api_full():
+def _attribute_by_slug(attributes, slug):
+    return next(item for item in attributes if item["slug"] == slug)
 
-    client = APIClient()
 
-    # ---------------- MANUFACTURER ----------------
+def _section_path_slugs(paths):
+    return {
+        tuple(section["slug"] for section in path)
+        for path in paths
+    }
+
+
+@pytest.fixture
+def product_detail_data():
     manufacturer = Manufacturer.objects.create(
-        name="Harvia",
-        slug="harvia",
-        logo="manufacturers/test.jpg",
+        name="Harvia Legend",
+        slug="harvia-legend",
+        logo="manufacturers/harvia-logo.png",
+        seo_title="Harvia Legend официальный бренд",
+        seo_description="Финские банные печи Harvia Legend",
+        seo_keywords="harvia, legend, sauna",
+        description="Большое описание производителя",
+        video="https://video.example.com/brands/harvia",
+        priority=500,
     )
 
-    # ---------------- SECTIONS ----------------
-
-    parent_section = Section.objects.create(
-        name="Основные печи",
-        slug="main_oven",
+    root_section = Section.objects.create(
+        name="Каталог",
+        slug="catalog-root",
+        menu_name="Каталог",
         ordering=1,
+        image="sections/catalog-root.jpg",
+        description_main="Основной каталог",
+        browser_title="Каталог печей",
+        description="Полное описание корневого раздела",
+        meta_description="Разделы каталога",
+        meta_keywords="каталог, печи",
     )
-
-    child_section = Section.objects.create(
+    sauna_section = Section.objects.create(
+        name="Банные печи",
+        slug="sauna-stoves",
+        parent=root_section,
+        ordering=2,
+        image="sections/sauna-stoves.jpg",
+        description_main="Печи для бани",
+        browser_title="Банные печи",
+        description="Печи для разных парных",
+        meta_description="Банные печи для каталога",
+        meta_keywords="баня, печи",
+    )
+    wood_section = Section.objects.create(
         name="Дровяные печи",
-        slug="wood_oven",
-        parent=parent_section,
-        ordering=1,
+        slug="wood-fired-stoves",
+        parent=sauna_section,
+        ordering=3,
+        image="sections/wood-fired-stoves.jpg",
+        description_main="Дровяные модели",
+        browser_title="Дровяные печи",
+        description="Дровяные печи для русской бани",
+        meta_description="Дровяные печи",
+        meta_keywords="дрова, печь",
     )
-
-    # ---------------- PRODUCT ----------------
+    accessories_section = Section.objects.create(
+        name="Комплекты и аксессуары",
+        slug="kits-and-accessories",
+        parent=root_section,
+        ordering=4,
+        image="sections/accessories.jpg",
+        description="Сопутствующие разделы",
+    )
 
     product = Product.objects.create(
-
-        # --- основное ---
-        name="Тестовая печь MAX PRO",
+        name="Harvia Legend GreenFlame 240 Duo",
         manufacturer=manufacturer,
-        description="Полное описание товара",
-        video_url="https://youtube.com/test",
-
-        # --- цены ---
-        price=150000,
-        discount_price=120000,
-
-        # --- статусы ---
+        description=(
+            "Подробное описание товара с несколькими абзацами, "
+            "особенностями топки, каменки и монтажа."
+        ),
+        video_preview="products/video_previews/legend-240-preview.webp",
+        schema="products/schema/legend-240-schema.pdf",
+        price=189900,
+        discount_price=174500,
         free_delivery=True,
         in_stock=True,
         is_active=True,
         is_new=True,
         is_bestseller=True,
-
-        # --- параметры ---
-        sku="SKU-123,SKU-456",
-        series="Premium",
-
-        dimensions="800x600x900",
-        weight=85,
-
-        steam_volume_from=10,
-        steam_volume_to=20,
-
-        stone_weight=90,
-
-        # --- choices ---
-        fuel_type="wood",
-        heated_volume="100",
-
-        firebox_material="steel",
-        firebox_type="with_extension",
-
-        installation_type="corner",
-
-        glass_count="two",
-        fire_view="straight_glass",
-
-        heater_type="combined",
-        water_circuit=True,
-
-        stone_material="natural",
-
-        tank_type="samovar",
-
-        door_mechanism="side_opening",
-
-        chimney_diameter="115",
-        chimney_connection="top",
-
-        power_kw=14,
-
-        # --- boolean параметры ---
-        heat_exchanger=True,
-        glass_lift=True,
-        damper=True,
-        cooking_panel=True,
-
-        # --- SEO ---
-        seo_title="SEO заголовок",
-        seo_description="SEO описание",
-        seo_keywords="печь, баня, harvia",
+        priority=7,
+        sku="HL-240-DUO, HL-240-DUO-GF",
+        series="Legend GreenFlame",
+        seo_title="Harvia Legend GreenFlame 240 Duo купить",
+        seo_description="Карточка товара Harvia Legend GreenFlame 240 Duo",
+        seo_keywords="harvia legend, greenflame, банная печь",
     )
-
-    # связь с разделом
-    product.sections.add(child_section)
-
-    # ---------------- IMAGES ----------------
+    product.sections.add(wood_section, accessories_section)
 
     ProductImage.objects.create(
         product=product,
-        image="products/test_main.jpg",
+        image="products/images/legend-main.webp",
         is_main=True,
-        ordering=0,
+        ordering=10,
     )
-
     ProductImage.objects.create(
         product=product,
-        image="products/test_2.jpg",
-        is_main=False,
-        ordering=1,
+        image="products/images/legend-side.webp",
+        ordering=20,
+    )
+    ProductImage.objects.create(
+        product=product,
+        image="products/images/legend-firebox.webp",
+        ordering=30,
     )
 
-    # ---------------- DOCUMENTS ----------------
+    ProductVideo.objects.create(
+        product=product,
+        url="https://video.example.com/products/legend-review.mp4",
+        preview_url="https://cdn.example.com/previews/legend-review.webp",
+        ordering=20,
+    )
+    ProductVideo.objects.create(
+        product=product,
+        url="https://www.youtube.com/watch?v=legend-installation",
+        preview_url="https://img.youtube.com/vi/legend-installation/maxresdefault.jpg",
+        ordering=10,
+    )
 
     ProductDocument.objects.create(
         product=product,
-        title="Инструкция",
-        file="docs/manual.pdf",
-        ordering=0,
+        title="Инструкция по монтажу",
+        file="products/documents/legend-installation.pdf",
+        ordering=20,
     )
-
     ProductDocument.objects.create(
         product=product,
-        title="Сертификат",
-        file="docs/cert.pdf",
-        ordering=1,
+        title="Сертификат соответствия",
+        file="products/documents/legend-certificate.pdf",
+        ordering=10,
+    )
+    ProductDocument.objects.create(
+        product=product,
+        title="Гарантийный талон",
+        file="products/documents/legend-warranty.pdf",
+        ordering=30,
     )
 
-    # ---------------- REQUEST ----------------
-
-    url = reverse(
-        "catalog-product-detail",
-        kwargs={"id": product.id},
+    fuel_attribute = ProductAttribute.objects.create(
+        name="Тип топлива",
+        slug="fuel-type",
+        type=ProductAttribute.AttributeType.CHOICE,
+    )
+    wood_option = ProductAttributeOption.objects.create(
+        attribute=fuel_attribute,
+        value="Дрова",
+        slug="wood",
+    )
+    ProductAttributeOption.objects.create(
+        attribute=fuel_attribute,
+        value="Газ",
+        slug="gas",
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=fuel_attribute,
+        option=wood_option,
     )
 
+    materials_attribute = ProductAttribute.objects.create(
+        name="Материалы отделки",
+        slug="finish-materials",
+        type=ProductAttribute.AttributeType.CHOICE,
+        allow_multiple=True,
+    )
+    soapstone_option = ProductAttributeOption.objects.create(
+        attribute=materials_attribute,
+        value="Талькохлорит",
+        slug="soapstone",
+    )
+    steel_option = ProductAttributeOption.objects.create(
+        attribute=materials_attribute,
+        value="Нержавеющая сталь",
+        slug="stainless-steel",
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=materials_attribute,
+        option=soapstone_option,
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=materials_attribute,
+        option=steel_option,
+    )
+
+    power_attribute = ProductAttribute.objects.create(
+        name="Мощность",
+        slug="power-kw",
+        type=ProductAttribute.AttributeType.NUMBER,
+        unit="кВт",
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=power_attribute,
+        value_number="18.50",
+    )
+
+    steam_volume_attribute = ProductAttribute.objects.create(
+        name="Объем парной",
+        slug="steam-volume",
+        type=ProductAttribute.AttributeType.NUMBER,
+        unit="м3",
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=steam_volume_attribute,
+        value_number="24.00",
+    )
+
+    water_circuit_attribute = ProductAttribute.objects.create(
+        name="Водяной контур",
+        slug="water-circuit",
+        type=ProductAttribute.AttributeType.BOOLEAN,
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=water_circuit_attribute,
+        value_bool=True,
+    )
+
+    glass_lift_attribute = ProductAttribute.objects.create(
+        name="Подъемное стекло",
+        slug="glass-lift",
+        type=ProductAttribute.AttributeType.BOOLEAN,
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=glass_lift_attribute,
+        value_bool=False,
+    )
+
+    installation_note_attribute = ProductAttribute.objects.create(
+        name="Комментарий к монтажу",
+        slug="installation-note",
+        type=ProductAttribute.AttributeType.TEXT,
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=installation_note_attribute,
+        value_text="Нужен негорючий экран и отступ от деревянной стены 500 мм.",
+    )
+
+    # Шумовые данные проверяют, что detail отдает только выбранный товар.
+    other_product = Product.objects.create(
+        name="Не тот товар",
+        manufacturer=manufacturer,
+        price=1,
+        is_active=True,
+    )
+    other_product.sections.add(sauna_section)
+    ProductImage.objects.create(
+        product=other_product,
+        image="products/images/other.webp",
+        is_main=True,
+    )
+
+    return {
+        "product": product,
+        "manufacturer": manufacturer,
+        "sections": [root_section, sauna_section, wood_section, accessories_section],
+    }
+
+
+@pytest.mark.django_db
+def test_product_detail_api_returns_full_current_contract(product_detail_data):
+    client = APIClient()
+    product = product_detail_data["product"]
+
+    url = reverse("catalog-product-detail", kwargs={"id": product.id})
     response = client.get(url)
 
     assert response.status_code == 200
@@ -162,62 +303,117 @@ def test_product_detail_api_full():
     print(json.dumps(data, indent=4, ensure_ascii=False))
     print("====================================\n\n")
 
-    # ---------------- BASIC CHECKS ----------------
+    assert data["id"] == product.id
+    assert data["name"] == "Harvia Legend GreenFlame 240 Duo"
+    assert data["slug"] == "harvia-legend-greenflame-240-duo"
+    assert data["manufacturer"] == "Harvia Legend"
+    assert data["price"] == 189900
+    assert data["discount_price"] == 174500
+    assert data["description"].startswith("Подробное описание товара")
+    assert data["is_new"] is True
+    assert data["is_bestseller"] is True
+    assert data["priority"] == 7
+    assert "created_at" in data
 
-    assert data["name"] == "Тестовая печь MAX PRO"
+    assert _section_path_slugs(data["sections"]) == {
+        ("catalog-root", "sauna-stoves", "wood-fired-stoves"),
+        ("catalog-root", "kits-and-accessories"),
+    }
 
-    assert data["price"] == 150000
-    assert data["discount_price"] == 120000
+    assert [image["ordering"] for image in data["images"]] == [10, 20, 30]
+    assert data["images"][0]["image"] == "/media/products/images/legend-main.webp"
+    assert data["images"][0]["is_main"] is True
+    assert "is_main" not in data["images"][1]
+    assert data["images"][1]["image"] == "/media/products/images/legend-side.webp"
+    assert data["images"][2]["image"] == "/media/products/images/legend-firebox.webp"
 
-    # ---------------- MANUFACTURER ----------------
+    assert [video["ordering"] for video in data["videos"]] == [10, 20]
+    assert data["videos"][0]["url"] == (
+        "https://www.youtube.com/watch?v=legend-installation"
+    )
+    assert data["videos"][0]["preview_url"] == (
+        "https://img.youtube.com/vi/legend-installation/maxresdefault.jpg"
+    )
+    assert data["videos"][1]["url"] == (
+        "https://video.example.com/products/legend-review.mp4"
+    )
 
-    assert data["manufacturer"]["name"] == "Harvia"
+    assert [document["ordering"] for document in data["documents"]] == [10, 20, 30]
+    assert [document["title"] for document in data["documents"]] == [
+        "Сертификат соответствия",
+        "Инструкция по монтажу",
+        "Гарантийный талон",
+    ]
+    assert data["documents"][0]["file"] == (
+        "/media/products/documents/legend-certificate.pdf"
+    )
 
-    # ---------------- IMAGES ----------------
+    attributes = data["attributes"]
+    assert {attribute["slug"] for attribute in attributes} == {
+        "finish-materials",
+        "fuel-type",
+        "glass-lift",
+        "installation-note",
+        "power-kw",
+        "steam-volume",
+        "water-circuit",
+    }
 
-    assert len(data["images"]) == 2
+    fuel_type = _attribute_by_slug(attributes, "fuel-type")
+    assert fuel_type["name"] == "Тип топлива"
+    assert fuel_type["type"] == ProductAttribute.AttributeType.CHOICE
+    assert fuel_type["value"] == {
+        "id": fuel_type["value"]["id"],
+        "name": "Дрова",
+        "slug": "wood",
+    }
 
-    # главное изображение
-    assert any(img["is_main"] for img in data["images"])
-
-    # ---------------- DOCUMENTS ----------------
-
-    assert len(data["documents"]) == 2
-
-    titles = [doc["title"] for doc in data["documents"]]
-
-    assert "Инструкция" in titles
-    assert "Сертификат" in titles
-
-    # ---------------- SECTIONS PATH ----------------
-
-    assert len(data["sections"]) == 1
-
-    path = data["sections"][0]
-
-    assert [s["slug"] for s in path] == [
-        "main_oven",
-        "wood_oven",
+    finish_materials = _attribute_by_slug(attributes, "finish-materials")
+    assert finish_materials["type"] == ProductAttribute.AttributeType.CHOICE
+    assert finish_materials["value"] == [
+        {
+            "id": finish_materials["value"][0]["id"],
+            "name": "Талькохлорит",
+            "slug": "soapstone",
+        },
+        {
+            "id": finish_materials["value"][1]["id"],
+            "name": "Нержавеющая сталь",
+            "slug": "stainless-steel",
+        },
     ]
 
-    # ---------------- CHOICES ----------------
+    power = _attribute_by_slug(attributes, "power-kw")
+    assert power["type"] == ProductAttribute.AttributeType.NUMBER
+    assert power["unit"] == "кВт"
+    assert power["value"] == "18.50"
 
-    assert data["fuel_type"] == "wood"
-    assert "fuel_type_display" in data
+    steam_volume = _attribute_by_slug(attributes, "steam-volume")
+    assert steam_volume["unit"] == "м3"
+    assert steam_volume["value"] == "24.00"
 
-    # ---------------- BOOLEAN ----------------
+    water_circuit = _attribute_by_slug(attributes, "water-circuit")
+    assert water_circuit["type"] == ProductAttribute.AttributeType.BOOLEAN
+    assert water_circuit["value"] is True
 
-    assert data["water_circuit"] is True
-    assert data["heat_exchanger"] is True
-    assert data["glass_lift"] is True
-    assert data["damper"] is True
-    assert data["cooking_panel"] is True
+    glass_lift = _attribute_by_slug(attributes, "glass-lift")
+    assert glass_lift["value"] is False
 
-    # ---------------- NUMERIC ----------------
+    installation_note = _attribute_by_slug(attributes, "installation-note")
+    assert installation_note["type"] == ProductAttribute.AttributeType.TEXT
+    assert installation_note["value"] == (
+        "Нужен негорючий экран и отступ от деревянной стены 500 мм."
+    )
 
-    assert data["power_kw"] == 14
 
-    # ---------------- STEAM VOLUME ----------------
+@pytest.mark.django_db
+def test_product_detail_api_returns_404_for_inactive_product(product_detail_data):
+    client = APIClient()
+    product = product_detail_data["product"]
+    product.is_active = False
+    product.save(update_fields=["is_active"])
 
-    assert data["steam_volume_from"] == 10
-    assert data["steam_volume_to"] == 20
+    url = reverse("catalog-product-detail", kwargs={"id": product.id})
+    response = client.get(url)
+
+    assert response.status_code == 404

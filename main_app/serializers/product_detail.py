@@ -20,6 +20,7 @@ class ProductDetailSerializer(serializers.Serializer):
 
     created_at = serializers.DateTimeField()
 
+    sections = serializers.ListField()
     images = serializers.ListField()
     videos = serializers.ListField()
     documents = serializers.ListField()

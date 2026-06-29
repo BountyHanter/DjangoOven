@@ -1,4 +1,5 @@
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
 
 from django.db.models import (
     Case,
@@ -25,6 +26,75 @@ from main_app.models.section import Section
 class CatalogService:
     BOOLEAN_TYPES = {"bool", "boolean"}
     POWER_ATTRIBUTE_SLUG = "moshchnost"
+
+    @staticmethod
+    def _normalize_id(value):
+        if value in (None, "") or isinstance(value, bool):
+            return None
+
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_id_list(value):
+        if value in (None, ""):
+            return []
+
+        if isinstance(value, (list, tuple, set)):
+            raw_values = value
+        else:
+            raw_values = [value]
+
+        ids = []
+
+        for raw_value in raw_values:
+            parts = (
+                raw_value.split(",")
+                if isinstance(raw_value, str)
+                else [raw_value]
+            )
+
+            for part in parts:
+                if isinstance(part, str):
+                    part = part.strip()
+
+                if part in (None, "") or isinstance(part, bool):
+                    continue
+
+                try:
+                    ids.append(int(part))
+                except (TypeError, ValueError):
+                    continue
+
+        return ids
+
+    @staticmethod
+    def _normalize_number(value):
+        if value in (None, "") or isinstance(value, bool):
+            return None
+
+        try:
+            return Decimal(str(value))
+        except (InvalidOperation, TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalize_bool(value):
+        if isinstance(value, bool):
+            return value
+
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+
+            if normalized in {"true", "1", "yes", "y"}:
+                return True
+
+            if normalized in {"false", "0", "no", "n"}:
+                return False
+
+        return None
 
     @staticmethod
     def _filter_by_attribute_exists(qs, attribute_id, **conditions):
@@ -243,7 +313,8 @@ class CatalogService:
 
         for f in filters:
             f_type = f.get("type")
-            attribute_id = f.get("attribute_id")
+            raw_attribute_id = f.get("attribute_id")
+            attribute_id = CatalogService._normalize_id(raw_attribute_id)
 
             if not f_type:
                 continue
@@ -252,32 +323,45 @@ class CatalogService:
             # SECTION
             # -------------------------
             if f_type in ("section", "sections"):
-                section_ids = (
+                raw_section_ids = (
                     f.get("ids")
                     or f.get("section_ids")
                     or []
                 )
+                section_ids = CatalogService._normalize_id_list(raw_section_ids)
+
+                if raw_section_ids and not section_ids:
+                    return qs.none()
 
                 if section_ids:
                     section_ids = CatalogService._get_section_ids_with_descendants(
                         section_ids,
                     )
 
-                    if section_ids:
-                        product_sections = Product.sections.through.objects.filter(
-                            product_id=OuterRef("pk"),
-                            section_id__in=section_ids,
-                        )
+                    if not section_ids:
+                        return qs.none()
 
-                        qs = qs.filter(
-                            Exists(product_sections),
-                        )
+                    product_sections = Product.sections.through.objects.filter(
+                        product_id=OuterRef("pk"),
+                        section_id__in=section_ids,
+                    )
+
+                    qs = qs.filter(
+                        Exists(product_sections),
+                    )
 
             # -------------------------
             # CHOICE
             # -------------------------
             elif f_type == "choice":
-                option_ids = f.get("option_ids") or []
+                raw_option_ids = f.get("option_ids") or []
+                option_ids = CatalogService._normalize_id_list(raw_option_ids)
+
+                if raw_attribute_id and not attribute_id:
+                    return qs.none()
+
+                if raw_option_ids and not option_ids:
+                    return qs.none()
 
                 if attribute_id and option_ids:
                     qs = CatalogService._filter_by_attribute_exists(
@@ -291,10 +375,20 @@ class CatalogService:
             # -------------------------
             elif f_type == "number":
                 if not attribute_id:
+                    if raw_attribute_id:
+                        return qs.none()
                     continue
 
-                gte = f.get("gte")
-                lte = f.get("lte")
+                raw_gte = f.get("gte")
+                raw_lte = f.get("lte")
+                gte = CatalogService._normalize_number(raw_gte)
+                lte = CatalogService._normalize_number(raw_lte)
+
+                if raw_gte is not None and gte is None:
+                    return qs.none()
+
+                if raw_lte is not None and lte is None:
+                    return qs.none()
 
                 number_filter = {}
 
@@ -314,7 +408,14 @@ class CatalogService:
             # BOOLEAN
             # -------------------------
             elif f_type in CatalogService.BOOLEAN_TYPES:
-                value = f.get("value")
+                raw_value = f.get("value")
+                value = CatalogService._normalize_bool(raw_value)
+
+                if raw_attribute_id and not attribute_id:
+                    return qs.none()
+
+                if raw_value is not None and value is None:
+                    return qs.none()
 
                 if attribute_id and value is not None:
                     qs = CatalogService._filter_by_attribute_exists(
@@ -327,7 +428,13 @@ class CatalogService:
             # MANUFACTURER
             # -------------------------
             elif f_type == "manufacturer":
-                manufacturer_ids = f.get("ids") or []
+                raw_manufacturer_ids = f.get("ids") or []
+                manufacturer_ids = CatalogService._normalize_id_list(
+                    raw_manufacturer_ids,
+                )
+
+                if raw_manufacturer_ids and not manufacturer_ids:
+                    return qs.none()
 
                 if manufacturer_ids:
                     qs = qs.filter(
@@ -338,8 +445,16 @@ class CatalogService:
             # PRICE
             # -------------------------
             elif f_type == "price":
-                gte = f.get("gte")
-                lte = f.get("lte")
+                raw_gte = f.get("gte")
+                raw_lte = f.get("lte")
+                gte = CatalogService._normalize_number(raw_gte)
+                lte = CatalogService._normalize_number(raw_lte)
+
+                if raw_gte is not None and gte is None:
+                    return qs.none()
+
+                if raw_lte is not None and lte is None:
+                    return qs.none()
 
                 qs = qs.annotate(
                     actual_price=Coalesce(
@@ -359,7 +474,11 @@ class CatalogService:
             # DISCOUNT
             # -------------------------
             elif f_type == "has_discount":
-                value = f.get("value")
+                raw_value = f.get("value")
+                value = CatalogService._normalize_bool(raw_value)
+
+                if raw_value is not None and value is None:
+                    return qs.none()
 
                 if value is True:
                     qs = qs.filter(

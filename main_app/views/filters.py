@@ -19,7 +19,10 @@ class CatalogFiltersAPIView(APIView):
         if filters is None:
             return Response(
                 {
-                    "detail": "Некорректный формат filters. Ожидается JSON-список."
+                    "detail": (
+                        "Некорректный формат filters. "
+                        "Ожидается JSON-список объектов."
+                    )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -40,7 +43,10 @@ class CatalogFiltersAPIView(APIView):
         except JSONDecodeError:
             return None
 
-        if not isinstance(filters, list):
+        if (
+            not isinstance(filters, list)
+            or not all(isinstance(item, dict) for item in filters)
+        ):
             return None
 
         return filters
