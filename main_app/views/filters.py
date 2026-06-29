@@ -2,16 +2,15 @@ import json
 
 from json import JSONDecodeError
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from main_app.serializers.product_preview import ProductPreviewSerializer
 from main_app.services.catalog.service import CatalogService
 
 
-class ProductCatalogAPIView(APIView):
+class CatalogFiltersAPIView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -25,20 +24,9 @@ class ProductCatalogAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        page_data = CatalogService.get_preview_products_page(
-            request=request,
-            filters=filters,
-        )
+        data = CatalogService.get_filters_data(filters)
 
-        serializer = ProductPreviewSerializer(
-            page_data["page"],
-            many=True,
-            context={"request": request},
-        )
-
-        return page_data["paginator"].get_paginated_response(
-            serializer.data
-        )
+        return Response(data)
 
     @staticmethod
     def _parse_filters(request):

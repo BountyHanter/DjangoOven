@@ -1,32 +1,13 @@
-from rest_framework.generics import RetrieveAPIView
-from rest_framework.permissions import AllowAny
-from django.db.models import Case, When, F, DecimalField
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
-from main_app.models import Product
 from main_app.serializers.product_detail import ProductDetailSerializer
+from main_app.services.product.product_detail_service import ProductDetailService
 
 
-class ProductDetailAPIView(RetrieveAPIView):
-    permission_classes = [AllowAny]
-    serializer_class = ProductDetailSerializer
-    lookup_field = "id"
+class ProductDetailAPIView(APIView):
 
-    def get_queryset(self):
+    def get(self, request, id):
+        data = ProductDetailService.get_product(id)
 
-        return (
-            Product.objects
-            .filter(is_active=True)
-            .select_related("manufacturer")
-            .prefetch_related(
-                "images",
-                "documents",
-                "sections__parent",
-            )
-            .annotate(
-                final_price=Case(
-                    When(discount_price__isnull=False, then=F("discount_price")),
-                    default=F("price"),
-                    output_field=DecimalField(max_digits=12, decimal_places=2)
-                ),
-            )
-        )
+        return Response(ProductDetailSerializer(data).data)

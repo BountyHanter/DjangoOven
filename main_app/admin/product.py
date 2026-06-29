@@ -87,7 +87,7 @@ class ProductDocumentInline(admin.TabularInline):
 class ProductVideoInline(admin.TabularInline):
     model = ProductVideo
     extra = 1
-    fields = ("url", "ordering")
+    fields = ("url", "preview_url", "ordering")
     ordering = ("ordering",)
 
 
@@ -105,9 +105,10 @@ class ProductAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("sections",)
 
-    readonly_fields = ("slug",)
+    readonly_fields = ("id", "slug")
 
     search_fields = (
+        "id",
         "name",
         "sku",
         "series",
@@ -140,6 +141,7 @@ class ProductAdmin(admin.ModelAdmin):
             "Основная информация",
             {
                 "fields": (
+                    "id",
                     "name",
                     "slug",
                     "manufacturer",

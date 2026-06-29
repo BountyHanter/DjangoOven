@@ -1,49 +1,27 @@
 from rest_framework import serializers
 
-from main_app.models import ProductDocument, ProductImage, Section, Manufacturer, Product
-from main_app.serializers.mixin import ChoicesDisplayMixin
 
+class ProductDetailSerializer(serializers.Serializer):
 
-class ManufacturerSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Manufacturer
-        fields = ("id", "name")
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
 
-class ProductImageSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductImage
-        fields = ("image", "is_main", "ordering")
+    manufacturer = serializers.CharField(allow_null=True)
 
-class ProductDocumentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductDocument
-        fields = ("title", "file")
+    price = serializers.IntegerField()
+    discount_price = serializers.IntegerField(allow_null=True)
 
-class ProductDetailSerializer(ChoicesDisplayMixin, serializers.ModelSerializer):
+    description = serializers.CharField(allow_null=True)
 
-    manufacturer = ManufacturerSerializer()
-    sections = serializers.SerializerMethodField()
+    is_new = serializers.BooleanField()
+    is_bestseller = serializers.BooleanField()
+    priority = serializers.IntegerField(allow_null=True)
 
-    images = ProductImageSerializer(many=True)
-    documents = ProductDocumentSerializer(many=True)
+    created_at = serializers.DateTimeField()
 
-    class Meta:
-        model = Product
-        fields = "__all__"
+    images = serializers.ListField()
+    videos = serializers.ListField()
+    documents = serializers.ListField()
 
-    def get_sections(self, obj):
-        result = []
-
-        for section in obj.sections.all():
-            path = section.get_path()
-
-            result.append([
-                {
-                    "id": s.id,
-                    "name": s.name,
-                    "slug": s.slug,
-                }
-                for s in path
-            ])
-
-        return result
+    attributes = serializers.ListField()

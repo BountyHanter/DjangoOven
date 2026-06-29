@@ -1,26 +1,106 @@
-from django.db.models import Case, F, IntegerField, Value, When, Count, Min, Max
+from collections import defaultdict
+
+from django.db.models import (
+    Case,
+    Count,
+    Exists,
+    F,
+    IntegerField,
+    Max,
+    Min,
+    OuterRef,
+    Prefetch,
+    Subquery,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce
 
-from main_app.models import ProductAttributeValue
-from main_app.models.product import Product
-
-if __name__ == "__main__":
-    import os
-
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-
-    import django
-    django.setup()
+from config.utils.pagination import DefaultPagination
+from main_app.models.attribute import ProductAttributeValue
+from main_app.models.product import Product, ProductImage, ProductVideo
+from main_app.models.section import Section
 
 
 class CatalogService:
+    BOOLEAN_TYPES = {"bool", "boolean"}
+    POWER_ATTRIBUTE_SLUG = "moshchnost"
 
     @staticmethod
-    def get_queryset(filters: list[dict] | None = None):
+    def _filter_by_attribute_exists(qs, attribute_id, **conditions):
+        attribute_values = ProductAttributeValue.objects.filter(
+            product_id=OuterRef("pk"),
+            attribute_id=attribute_id,
+            **conditions,
+        )
+
+        return qs.filter(Exists(attribute_values))
+
+    @staticmethod
+    def _get_section_ids_with_descendants(section_ids):
         """
-        Главная точка входа для каталога:
+        Возвращает выбранные разделы + всех их потомков.
+
+        Работает с любой глубиной вложенности.
+        """
+
+        normalized_ids = set()
+
+        for section_id in section_ids:
+            try:
+                normalized_ids.add(int(section_id))
+            except (TypeError, ValueError):
+                continue
+
+        if not normalized_ids:
+            return []
+
+        rows = Section.objects.filter(
+            is_active=True,
+        ).values(
+            "id",
+            "parent_id",
+        )
+
+        children_by_parent = defaultdict(list)
+        active_section_ids = set()
+
+        for row in rows:
+            section_id = row["id"]
+            parent_id = row["parent_id"]
+
+            active_section_ids.add(section_id)
+
+            if parent_id:
+                children_by_parent[parent_id].append(section_id)
+
+        result_ids = set()
+        stack = [
+            section_id
+            for section_id in normalized_ids
+            if section_id in active_section_ids
+        ]
+
+        while stack:
+            section_id = stack.pop()
+
+            if section_id in result_ids:
+                continue
+
+            result_ids.add(section_id)
+            stack.extend(children_by_parent.get(section_id, []))
+
+        return list(result_ids)
+
+    @staticmethod
+    def get_products_queryset(filters: list[dict] | None = None):
+        """
+        Базовая выдача товаров каталога:
+        - только активные товары
         - применяем фильтры
         - применяем сортировку
+
+        Пагинацию здесь НЕ делаем.
         """
 
         qs = CatalogService.apply_filters(filters or [])
@@ -29,77 +109,223 @@ class CatalogService:
         return qs
 
     @staticmethod
+    def get_products_page(request, filters: list[dict] | None = None):
+        """
+        Базовая выдача товаров с пагинацией.
+        """
+
+        qs = CatalogService.get_products_queryset(filters)
+
+        paginator = DefaultPagination()
+        page = paginator.paginate_queryset(qs, request)
+
+        return {
+            "paginator": paginator,
+            "page": page,
+            "queryset": qs,
+        }
+
+    @staticmethod
+    def get_preview_products_queryset(filters: list[dict] | None = None):
+        """
+        Queryset для preview-карточек товаров.
+
+        Используется для:
+        GET /api/v1/catalog/products/
+
+        Здесь:
+        - применяем фильтры
+        - подготавливаем данные для карточки
+        - применяем сортировку
+        """
+
+        qs = CatalogService.apply_filters(filters or [])
+        qs = CatalogService.prepare_preview_queryset(qs)
+        qs = CatalogService.apply_sorting(qs)
+
+        return qs
+
+    @staticmethod
+    def get_preview_products_page(request, filters: list[dict] | None = None):
+        """
+        Preview-выдача товаров с пагинацией.
+        """
+
+        qs = CatalogService.get_preview_products_queryset(filters)
+
+        paginator = DefaultPagination()
+        page = paginator.paginate_queryset(qs, request)
+
+        return {
+            "paginator": paginator,
+            "page": page,
+            "queryset": qs,
+        }
+
+    @staticmethod
+    def prepare_preview_queryset(qs):
+        """
+        Подготовка queryset для preview-карточек товара.
+
+        Добавляем:
+        - manufacturer
+        - images
+        - sections
+        - has_video
+        - power_value / power_name / power_unit из EAV по slug "moshchnost"
+        """
+
+        power_values = ProductAttributeValue.objects.filter(
+            product_id=OuterRef("pk"),
+            attribute__slug=CatalogService.POWER_ATTRIBUTE_SLUG,
+            value_number__isnull=False,
+        ).order_by("id")
+
+        has_video_qs = ProductVideo.objects.filter(
+            product_id=OuterRef("pk"),
+        )
+
+        preview_images_qs = ProductImage.objects.order_by(
+            "-is_main",
+            "ordering",
+            "id",
+        )
+
+        return (
+            qs
+            .select_related("manufacturer")
+            .prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=preview_images_qs,
+                    to_attr="preview_images",
+                ),
+                "sections",
+            )
+            .annotate(
+                has_video=Exists(has_video_qs),
+                power_value=Subquery(
+                    power_values.values("value_number")[:1],
+                ),
+                power_name=Subquery(
+                    power_values.values("attribute__name")[:1],
+                ),
+                power_unit=Subquery(
+                    power_values.values("attribute__unit")[:1],
+                ),
+            )
+        )
+
+    @staticmethod
+    def get_filters_data(filters: list[dict] | None = None):
+        """
+        Отдельная выдача доступных фильтров.
+
+        Важно:
+        - применяем те же самые фильтры
+        - НЕ применяем сортировку
+        - НЕ применяем пагинацию
+        - считаем фильтры по полной отфильтрованной выборке
+        """
+
+        qs = CatalogService.apply_filters(filters or [])
+
+        return CatalogService.get_available_filters(qs)
+
+    @staticmethod
     def apply_filters(filters: list[dict]):
         """
-        AND между фильтрами
-        OR внутри одного фильтра (option_ids)
+        AND между фильтрами.
+        OR внутри одного фильтра, например option_ids.
         """
 
-        qs = Product.objects.all()
+        qs = Product.objects.filter(is_active=True)
 
         for f in filters:
-            f_type = f["type"]
+            f_type = f.get("type")
             attribute_id = f.get("attribute_id")
 
+            if not f_type:
+                continue
+
             # -------------------------
-            # CHOICE (OR внутри)
+            # SECTION
             # -------------------------
-            if f_type == "choice":
+            if f_type in ("section", "sections"):
+                section_ids = (
+                    f.get("ids")
+                    or f.get("section_ids")
+                    or []
+                )
+
+                if section_ids:
+                    section_ids = CatalogService._get_section_ids_with_descendants(
+                        section_ids,
+                    )
+
+                    if section_ids:
+                        product_sections = Product.sections.through.objects.filter(
+                            product_id=OuterRef("pk"),
+                            section_id__in=section_ids,
+                        )
+
+                        qs = qs.filter(
+                            Exists(product_sections),
+                        )
+
+            # -------------------------
+            # CHOICE
+            # -------------------------
+            elif f_type == "choice":
                 option_ids = f.get("option_ids") or []
 
-                if option_ids:
-                    qs = qs.filter(
-                        attribute_values__attribute_id=attribute_id,
-                        attribute_values__option_id__in=option_ids,
+                if attribute_id and option_ids:
+                    qs = CatalogService._filter_by_attribute_exists(
+                        qs,
+                        attribute_id,
+                        option_id__in=option_ids,
                     )
 
             # -------------------------
             # NUMBER
             # -------------------------
             elif f_type == "number":
+                if not attribute_id:
+                    continue
+
                 gte = f.get("gte")
                 lte = f.get("lte")
 
-                number_filter = {
-                    "attribute_values__attribute_id": attribute_id,
-                }
+                number_filter = {}
 
                 if gte is not None:
-                    number_filter["attribute_values__value_number__gte"] = gte
+                    number_filter["value_number__gte"] = gte
 
                 if lte is not None:
-                    number_filter["attribute_values__value_number__lte"] = lte
+                    number_filter["value_number__lte"] = lte
 
-                qs = qs.filter(**number_filter)
+                qs = CatalogService._filter_by_attribute_exists(
+                    qs,
+                    attribute_id,
+                    **number_filter,
+                )
 
             # -------------------------
             # BOOLEAN
             # -------------------------
-            elif f_type == "bool":
+            elif f_type in CatalogService.BOOLEAN_TYPES:
                 value = f.get("value")
 
-                if value is not None:
-                    qs = qs.filter(
-                        attribute_values__attribute_id=attribute_id,
-                        attribute_values__value_bool=value,
-                    )
-
-            # -------------------------
-            # TEXT
-            # -------------------------
-            elif f_type == "text":
-                value = f.get("value")
-
-                if value:
-                    qs = qs.filter(
-                        attribute_values__attribute_id=attribute_id,
-                        attribute_values__value_text__icontains=value,
+                if attribute_id and value is not None:
+                    qs = CatalogService._filter_by_attribute_exists(
+                        qs,
+                        attribute_id,
+                        value_bool=value,
                     )
 
             # -------------------------
             # MANUFACTURER
             # -------------------------
-
             elif f_type == "manufacturer":
                 manufacturer_ids = f.get("ids") or []
 
@@ -111,7 +337,6 @@ class CatalogService:
             # -------------------------
             # PRICE
             # -------------------------
-
             elif f_type == "price":
                 gte = f.get("gte")
                 lte = f.get("lte")
@@ -133,7 +358,6 @@ class CatalogService:
             # -------------------------
             # DISCOUNT
             # -------------------------
-
             elif f_type == "has_discount":
                 value = f.get("value")
 
@@ -147,7 +371,7 @@ class CatalogService:
                         discount_price__isnull=True,
                     )
 
-        return qs.distinct()
+        return qs
 
     @staticmethod
     def apply_sorting(qs):
@@ -168,29 +392,21 @@ class CatalogService:
 
         qs = qs.annotate(
             sort_group=Case(
-
-                # 1. хит + приоритет
                 When(
                     is_bestseller=True,
                     priority__isnull=False,
                     then=Value(1),
                 ),
-
-                # 2. хит без приоритета
                 When(
                     is_bestseller=True,
                     priority__isnull=True,
                     then=Value(2),
                 ),
-
-                # 3. приоритет без хита
                 When(
                     is_bestseller=False,
                     priority__isnull=False,
                     then=Value(3),
                 ),
-
-                # 4. остальное
                 default=Value(4),
                 output_field=IntegerField(),
             )
@@ -203,13 +419,142 @@ class CatalogService:
         )
 
     @staticmethod
+    def get_sections_tree(products_qs):
+        """
+        Дерево разделов для filters API.
+
+        Важно:
+        - sections отдаём всегда;
+        - вложенность любая;
+        - разделы без товаров не скрываем;
+        - products_count считается с учётом всех потомков.
+        """
+
+        section_rows = list(
+            Section.objects
+            .filter(is_active=True)
+            .values(
+                "id",
+                "name",
+                "slug",
+                "parent_id",
+                "ordering",
+            )
+            .order_by(
+                "parent_id",
+                "ordering",
+                "name",
+            )
+        )
+
+        product_section_rows = (
+            products_qs
+            .order_by()
+            .filter(sections__isnull=False)
+            .values_list(
+                "sections__id",
+                "id",
+            )
+            .distinct()
+        )
+
+        direct_product_ids_by_section = defaultdict(set)
+
+        for section_id, product_id in product_section_rows:
+            if section_id:
+                direct_product_ids_by_section[section_id].add(product_id)
+
+        sections_by_id = {}
+
+        for row in section_rows:
+            sections_by_id[row["id"]] = {
+                "id": row["id"],
+                "name": row["name"],
+                "slug": row["slug"],
+                "products_count": 0,
+                "children": [],
+                "_parent_id": row["parent_id"],
+                "_ordering": row["ordering"],
+            }
+
+        roots = []
+
+        for section in sections_by_id.values():
+            parent_id = section["_parent_id"]
+
+            if parent_id and parent_id in sections_by_id:
+                sections_by_id[parent_id]["children"].append(section)
+            else:
+                roots.append(section)
+
+        def sort_sections(items):
+            items.sort(
+                key=lambda item: (
+                    item["_ordering"],
+                    item["name"],
+                )
+            )
+
+            for item in items:
+                sort_sections(item["children"])
+
+        def fill_products_count(section, visited_ids=None):
+            if visited_ids is None:
+                visited_ids = set()
+
+            section_id = section["id"]
+
+            if section_id in visited_ids:
+                return set()
+
+            visited_ids.add(section_id)
+
+            product_ids = set(
+                direct_product_ids_by_section.get(
+                    section_id,
+                    set(),
+                )
+            )
+
+            for child in section["children"]:
+                product_ids.update(
+                    fill_products_count(
+                        child,
+                        visited_ids.copy(),
+                    )
+                )
+
+            section["products_count"] = len(product_ids)
+
+            return product_ids
+
+        def cleanup(section):
+            section.pop("_parent_id", None)
+            section.pop("_ordering", None)
+
+            for child in section["children"]:
+                cleanup(child)
+
+        sort_sections(roots)
+
+        for root in roots:
+            fill_products_count(root)
+            cleanup(root)
+
+        return roots
+
+    @staticmethod
     def get_available_filters(products_qs):
         """
         Динамическая выдача доступных фильтров.
 
         На вход получает queryset товаров после фильтрации.
-        На выход отдаёт только те бренды, цены и характеристики,
-        которые реально есть у текущих товаров.
+        На выход отдаёт:
+        - sections всегда;
+        - price всегда;
+        - has_discount всегда;
+        - manufacturers только если есть;
+        - attributes только если есть.
         """
 
         products_qs = products_qs.annotate(
@@ -221,9 +566,13 @@ class CatalogService:
         )
 
         # -------------------------
+        # SECTIONS TREE
+        # -------------------------
+        sections = CatalogService.get_sections_tree(products_qs)
+
+        # -------------------------
         # PRICE
         # -------------------------
-
         price_data = products_qs.aggregate(
             min_price=Min("actual_price"),
             max_price=Max("actual_price"),
@@ -232,7 +581,6 @@ class CatalogService:
         # -------------------------
         # DISCOUNT
         # -------------------------
-
         has_discount = products_qs.filter(
             discount_price__isnull=False,
         ).exists()
@@ -240,7 +588,6 @@ class CatalogService:
         # -------------------------
         # MANUFACTURERS
         # -------------------------
-
         manufacturers_qs = (
             products_qs
             .filter(
@@ -273,248 +620,153 @@ class CatalogService:
         # -------------------------
         # ATTRIBUTES
         # -------------------------
+        product_ids = products_qs.order_by().values("id")
 
-        attribute_values_qs = (
-            ProductAttributeValue.objects
-            .filter(
-                product_id__in=products_qs.values("id"),
-            )
-            .select_related(
-                "attribute",
-                "option",
-            )
-            .order_by(
-                "attribute__name",
-            )
+        attribute_values_qs = ProductAttributeValue.objects.filter(
+            product_id__in=product_ids,
         )
+
+        attribute_fields = (
+            "attribute_id",
+            "attribute__name",
+            "attribute__slug",
+            "attribute__type",
+            "attribute__unit",
+            "attribute__allow_multiple",
+        )
+
+        attribute_counts = {
+            item["attribute_id"]: item["products_count"]
+            for item in (
+                attribute_values_qs
+                .values("attribute_id")
+                .annotate(products_count=Count("product_id", distinct=True))
+            )
+        }
 
         attributes_map = {}
 
-        for attribute_value in attribute_values_qs:
-            attribute = attribute_value.attribute
-
-            attribute_data = attributes_map.setdefault(
-                attribute.id,
+        def get_attribute_data(row):
+            return attributes_map.setdefault(
+                row["attribute_id"],
                 {
-                    "id": attribute.id,
-                    "name": attribute.name,
-                    "slug": attribute.slug,
-                    "type": attribute.type,
-                    "unit": attribute.unit,
-                    "allow_multiple": attribute.allow_multiple,
-                    "_product_ids": set(),
+                    "id": row["attribute_id"],
+                    "name": row["attribute__name"],
+                    "slug": row["attribute__slug"],
+                    "type": row["attribute__type"],
+                    "unit": row["attribute__unit"],
+                    "allow_multiple": row["attribute__allow_multiple"],
+                    "products_count": attribute_counts.get(
+                        row["attribute_id"],
+                        0,
+                    ),
                 }
             )
 
-            attribute_data["_product_ids"].add(attribute_value.product_id)
+        # -------------------------
+        # CHOICE
+        # -------------------------
+        choice_rows = (
+            attribute_values_qs
+            .filter(
+                attribute__type="choice",
+                option__isnull=False,
+                option__is_active=True,
+            )
+            .values(
+                *attribute_fields,
+                "option_id",
+                "option__value",
+                "option__slug",
+            )
+            .annotate(products_count=Count("product_id", distinct=True))
+            .order_by("attribute__name", "option__value")
+        )
 
-            # -------------------------
-            # CHOICE
-            # -------------------------
+        for row in choice_rows:
+            attribute_data = get_attribute_data(row)
+            options = attribute_data.setdefault("options", [])
 
-            if attribute.type == "choice":
-                if not attribute_value.option:
-                    continue
-
-                if not attribute_value.option.is_active:
-                    continue
-
-                options = attribute_data.setdefault("options", {})
-
-                option_data = options.setdefault(
-                    attribute_value.option_id,
-                    {
-                        "id": attribute_value.option_id,
-                        "value": attribute_value.option.value,
-                        "slug": attribute_value.option.slug,
-                        "_product_ids": set(),
-                    }
-                )
-
-                option_data["_product_ids"].add(attribute_value.product_id)
-
-            # -------------------------
-            # NUMBER
-            # -------------------------
-
-            elif attribute.type == "number":
-                if attribute_value.value_number is None:
-                    continue
-
-                numbers = attribute_data.setdefault("_numbers", [])
-                numbers.append(attribute_value.value_number)
-
-            # -------------------------
-            # BOOLEAN
-            # -------------------------
-
-            elif attribute.type == "bool":
-                if attribute_value.value_bool is None:
-                    continue
-
-                bool_values = attribute_data.setdefault("values", {})
-
-                bool_data = bool_values.setdefault(
-                    attribute_value.value_bool,
-                    {
-                        "value": attribute_value.value_bool,
-                        "_product_ids": set(),
-                    }
-                )
-
-                bool_data["_product_ids"].add(attribute_value.product_id)
-
-            # -------------------------
-            # TEXT
-            # -------------------------
-
-            elif attribute.type == "text":
-                if not attribute_value.value_text:
-                    continue
-
-                text_values = attribute_data.setdefault("values", {})
-
-                text_data = text_values.setdefault(
-                    attribute_value.value_text,
-                    {
-                        "value": attribute_value.value_text,
-                        "_product_ids": set(),
-                    }
-                )
-
-                text_data["_product_ids"].add(attribute_value.product_id)
-
-        attributes = []
-
-        for attribute_data in attributes_map.values():
-            attribute_type = attribute_data["type"]
-
-            # -------------------------
-            # CHOICE RESULT
-            # -------------------------
-
-            if attribute_type == "choice":
-                options = []
-
-                for option_data in attribute_data.get("options", {}).values():
-                    option_data["products_count"] = len(
-                        option_data.pop("_product_ids")
-                    )
-                    options.append(option_data)
-
-                if not options:
-                    continue
-
-                options.sort(key=lambda item: item["value"])
-
-                attribute_data["options"] = options
-
-            # -------------------------
-            # NUMBER RESULT
-            # -------------------------
-
-            elif attribute_type == "number":
-                numbers = attribute_data.pop("_numbers", [])
-
-                if not numbers:
-                    continue
-
-                attribute_data["min"] = min(numbers)
-                attribute_data["max"] = max(numbers)
-                attribute_data["products_count"] = len(
-                    attribute_data["_product_ids"]
-                )
-
-            # -------------------------
-            # BOOLEAN RESULT
-            # -------------------------
-
-            elif attribute_type == "bool":
-                values = []
-
-                for bool_data in attribute_data.get("values", {}).values():
-                    bool_data["products_count"] = len(
-                        bool_data.pop("_product_ids")
-                    )
-                    values.append(bool_data)
-
-                if not values:
-                    continue
-
-                values.sort(key=lambda item: item["value"], reverse=True)
-
-                attribute_data["values"] = values
-
-            # -------------------------
-            # TEXT RESULT
-            # -------------------------
-
-            elif attribute_type == "text":
-                values = []
-
-                for text_data in attribute_data.get("values", {}).values():
-                    text_data["products_count"] = len(
-                        text_data.pop("_product_ids")
-                    )
-                    values.append(text_data)
-
-                if not values:
-                    continue
-
-                values.sort(key=lambda item: item["value"])
-
-                attribute_data["values"] = values
-
-            attribute_data["products_count"] = len(
-                attribute_data.pop("_product_ids")
+            options.append(
+                {
+                    "id": row["option_id"],
+                    "value": row["option__value"],
+                    "slug": row["option__slug"],
+                    "products_count": row["products_count"],
+                }
             )
 
-            attributes.append(attribute_data)
+        # -------------------------
+        # NUMBER
+        # -------------------------
+        number_rows = (
+            attribute_values_qs
+            .filter(
+                attribute__type="number",
+                value_number__isnull=False,
+            )
+            .values(*attribute_fields)
+            .annotate(
+                min=Min("value_number"),
+                max=Max("value_number"),
+                products_count=Count("product_id", distinct=True),
+            )
+            .order_by("attribute__name")
+        )
 
-        return {
+        for row in number_rows:
+            attribute_data = get_attribute_data(row)
+
+            attribute_data["min"] = row["min"]
+            attribute_data["max"] = row["max"]
+            attribute_data["products_count"] = row["products_count"]
+
+        # -------------------------
+        # BOOLEAN
+        # -------------------------
+        bool_rows = (
+            attribute_values_qs
+            .filter(
+                attribute__type__in=CatalogService.BOOLEAN_TYPES,
+                value_bool__isnull=False,
+            )
+            .values(
+                *attribute_fields,
+                "value_bool",
+            )
+            .annotate(products_count=Count("product_id", distinct=True))
+            .order_by("attribute__name", "-value_bool")
+        )
+
+        for row in bool_rows:
+            attribute_data = get_attribute_data(row)
+            values = attribute_data.setdefault("values", [])
+
+            values.append(
+                {
+                    "value": row["value_bool"],
+                    "products_count": row["products_count"],
+                }
+            )
+
+        attributes = sorted(
+            attributes_map.values(),
+            key=lambda item: item["name"],
+        )
+
+        result = {
+            "sections": sections,
             "price": {
                 "min": price_data["min_price"],
                 "max": price_data["max_price"],
             },
             "has_discount": has_discount,
-            "manufacturers": manufacturers,
-            "attributes": attributes,
         }
 
-    @staticmethod
-    def get_catalog_data(filters: list[dict] | None = None):
-        """
-        Полная выдача каталога:
-        - товары
-        - доступные фильтры для UI
-        """
+        if manufacturers:
+            result["manufacturers"] = manufacturers
 
-        filtered_qs = CatalogService.apply_filters(filters or [])
+        if attributes:
+            result["attributes"] = attributes
 
-        products_qs = CatalogService.apply_sorting(filtered_qs)
-        available_filters = CatalogService.get_available_filters(filtered_qs)
-
-        return {
-            "products": products_qs,
-            "available_filters": available_filters,
-        }
-
-if __name__ == "__main__":
-    def run_tests():
-        print("\n--- ДРОВА + ДЛИТЕЛЬНОЕ ГОРЕНИЕ ---")
-        print(
-            CatalogService.apply_filters([
-                {
-                    "attribute_id": 1,
-                    "type": "choice",
-                    "option_id": 1
-                },
-                {
-                    "attribute_id": 6,
-                    "type": "bool",
-                    "value": True
-                }
-            ])
-        )
-
-    run_tests()
+        return result
