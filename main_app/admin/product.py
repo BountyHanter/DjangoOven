@@ -147,7 +147,6 @@ class ProductAdmin(admin.ModelAdmin):
                     "manufacturer",
                     "sections",
                     "description",
-                    "video_preview",
                     "schema",
                 )
             },

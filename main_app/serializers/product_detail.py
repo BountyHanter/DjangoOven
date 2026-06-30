@@ -13,6 +13,7 @@ class ProductDetailSerializer(serializers.Serializer):
     discount_price = serializers.IntegerField(allow_null=True)
 
     description = serializers.CharField(allow_null=True)
+    schema = serializers.CharField(allow_null=True)
 
     is_new = serializers.BooleanField()
     is_bestseller = serializers.BooleanField()

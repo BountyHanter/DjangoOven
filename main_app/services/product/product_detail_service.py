@@ -34,6 +34,7 @@ class ProductDetailService:
             "price": product.price,
             "discount_price": product.discount_price,
             "description": product.description,
+            "schema": product.schema.url if product.schema else None,
             "is_new": product.is_new,
             "is_bestseller": product.is_bestseller,
             "priority": product.priority,

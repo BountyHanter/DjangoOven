@@ -94,7 +94,6 @@ def product_detail_data():
             "Подробное описание товара с несколькими абзацами, "
             "особенностями топки, каменки и монтажа."
         ),
-        video_preview="products/video_previews/legend-240-preview.webp",
         schema="products/schema/legend-240-schema.pdf",
         price=189900,
         discount_price=174500,
@@ -310,6 +309,7 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     assert data["price"] == 189900
     assert data["discount_price"] == 174500
     assert data["description"].startswith("Подробное описание товара")
+    assert data["schema"] == "/media/products/schema/legend-240-schema.pdf"
     assert data["is_new"] is True
     assert data["is_bestseller"] is True
     assert data["priority"] == 7

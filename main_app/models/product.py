@@ -39,13 +39,6 @@ class Product(models.Model):
         verbose_name="Описание",
     )
 
-    video_preview = models.ImageField(
-        upload_to="products/video_previews/",
-        null=True,
-        blank=True,
-        verbose_name="Превью видео",
-    )
-
     schema = models.FileField(
         upload_to="products/schema/",
         null=True,
