@@ -552,11 +552,17 @@ class CatalogService:
         section_rows = list(
             Section.objects
             .filter(is_active=True)
-            .values(
+            .only(
                 "id",
                 "name",
                 "slug",
-                "parent_id",
+                "parent",
+                "description_main",
+                "image",
+                "browser_title",
+                "description",
+                "meta_description",
+                "meta_keywords",
                 "ordering",
             )
             .order_by(
@@ -585,15 +591,23 @@ class CatalogService:
 
         sections_by_id = {}
 
-        for row in section_rows:
-            sections_by_id[row["id"]] = {
-                "id": row["id"],
-                "name": row["name"],
-                "slug": row["slug"],
+        for section in section_rows:
+            sections_by_id[section.id] = {
+                "id": section.id,
+                "name": section.name,
+                "slug": section.slug,
+                "description_main": section.description_main,
+                "image": section.image.url if section.image else None,
+                "browser_title": section.browser_title,
+                "description": section.description,
+                "meta_description": section.meta_description,
+                "meta_keywords": section.meta_keywords,
+                "ordering": section.ordering,
+                "count": 0,
                 "products_count": 0,
                 "children": [],
-                "_parent_id": row["parent_id"],
-                "_ordering": row["ordering"],
+                "_parent_id": section.parent_id,
+                "_ordering": section.ordering,
             }
 
         roots = []
@@ -643,7 +657,10 @@ class CatalogService:
                     )
                 )
 
-            section["products_count"] = len(product_ids)
+            products_count = len(product_ids)
+
+            section["count"] = products_count
+            section["products_count"] = products_count
 
             return product_ids
 

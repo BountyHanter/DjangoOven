@@ -55,6 +55,11 @@ def create_catalog_filter_dataset():
         slug="catalog-root",
         ordering=1,
         image="sections/catalog-root.webp",
+        description_main="Главный раздел каталога",
+        browser_title="Каталог печей",
+        description="Полное описание каталога",
+        meta_description="SEO описание каталога",
+        meta_keywords="каталог, печи",
     )
     stoves = Section.objects.create(
         name="Печи",
@@ -62,6 +67,11 @@ def create_catalog_filter_dataset():
         parent=root,
         ordering=1,
         image="sections/stoves.webp",
+        description_main="Раздел с печами",
+        browser_title="Печи",
+        description="Полное описание раздела печей",
+        meta_description="SEO описание печей",
+        meta_keywords="печи",
     )
     wood = Section.objects.create(
         name="Дровяные печи",
