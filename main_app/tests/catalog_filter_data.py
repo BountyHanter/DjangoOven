@@ -139,6 +139,7 @@ def create_catalog_filter_dataset():
         name="Длинная топка",
         slug="long-fire",
         type=ProductAttribute.AttributeType.BOOLEAN,
+        hide_in_filter=True,
     )
 
     wood_fuel = ProductAttributeOption.objects.create(

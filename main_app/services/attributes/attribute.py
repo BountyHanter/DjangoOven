@@ -40,7 +40,7 @@ def generate_attribute_slug(attribute):
     queryset = ProductAttribute.objects.exclude(pk=attribute.pk)
 
     return _build_unique_slug(
-        value=attribute.name,
+        value=attribute.slug or attribute.name,
         fallback="attribute",
         max_length=max_length,
         queryset=queryset,
@@ -77,7 +77,7 @@ def generate_attribute_option_slug(option):
 
     if not option.attribute_id:
         return _build_unique_slug(
-            value=option.value,
+            value=option.slug or option.value,
             fallback="option",
             max_length=max_length,
             queryset=ProductAttributeOption.objects.none(),
@@ -88,7 +88,7 @@ def generate_attribute_option_slug(option):
     ).exclude(pk=option.pk)
 
     return _build_unique_slug(
-        value=option.value,
+        value=option.slug or option.value,
         fallback="option",
         max_length=max_length,
         queryset=queryset,

@@ -247,6 +247,7 @@ def product_detail_data():
         name="Подъемное стекло",
         slug="glass-lift",
         type=ProductAttribute.AttributeType.BOOLEAN,
+        hide_in_filter=True,
     )
     ProductAttributeValue.objects.create(
         product=product,
@@ -305,15 +306,29 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     assert data["id"] == product.id
     assert data["name"] == "Harvia Legend GreenFlame 240 Duo"
     assert data["slug"] == "harvia-legend-greenflame-240-duo"
-    assert data["manufacturer"] == "Harvia Legend"
+    assert data["manufacturer"] == {
+        "id": product.manufacturer_id,
+        "name": "Harvia Legend",
+    }
     assert data["price"] == 189900
     assert data["discount_price"] == 174500
     assert data["description"].startswith("Подробное описание товара")
     assert data["schema"] == "/media/products/schema/legend-240-schema.pdf"
+    assert data["free_delivery"] is True
+    assert data["in_stock"] is True
+    assert data["is_active"] is True
     assert data["is_new"] is True
     assert data["is_bestseller"] is True
     assert data["priority"] == 7
+    assert data["sku"] == "HL-240-DUO, HL-240-DUO-GF"
+    assert data["series"] == "Legend GreenFlame"
+    assert data["seo_title"] == "Harvia Legend GreenFlame 240 Duo купить"
+    assert data["seo_description"] == (
+        "Карточка товара Harvia Legend GreenFlame 240 Duo"
+    )
+    assert data["seo_keywords"] == "harvia legend, greenflame, банная печь"
     assert "created_at" in data
+    assert "updated_at" in data
 
     assert _section_path_slugs(data["sections"]) == {
         ("catalog-root", "sauna-stoves", "wood-fired-stoves"),
@@ -397,6 +412,7 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     assert water_circuit["value"] is True
 
     glass_lift = _attribute_by_slug(attributes, "glass-lift")
+    assert glass_lift["name"] == "Подъемное стекло"
     assert glass_lift["value"] is False
 
     installation_note = _attribute_by_slug(attributes, "installation-note")

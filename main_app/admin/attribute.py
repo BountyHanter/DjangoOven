@@ -94,6 +94,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "name",
         "type",
         "allow_multiple",
+        "hide_in_filter",
         "unit",
         "options_count",
     )
@@ -101,6 +102,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
     list_filter = (
         "type",
         "allow_multiple",
+        "hide_in_filter",
     )
 
     search_fields = (
@@ -114,6 +116,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "slug",
         "type",
         "allow_multiple",
+        "hide_in_filter",
         "unit",
     )
 

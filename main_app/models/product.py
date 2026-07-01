@@ -1,9 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from slugify import slugify
 
 from main_app.models.manufacturer import Manufacturer
 from main_app.models.section import Section
+from main_app.services.slug import build_unique_slug
 
 
 class Product(models.Model):
@@ -148,22 +148,19 @@ class Product(models.Model):
         return self.name
 
     def save(self, *args, **kwargs):
-        if not self.slug or self.slug.strip() == "":
-            base_slug = slugify(self.name) or "product"
-            slug = base_slug
-            counter = 1
+        slug_value = self.slug or self.name
 
-            while Product.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-
-            self.slug = slug
+        if (
+            not self.slug
+            or Product.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+        ):
+            self.slug = build_unique_slug(self, slug_value, "product")
 
         super().save(*args, **kwargs)
 
     def clean(self):
         if not self.slug:
-            self.slug = slugify(self.name) or "product"
+            self.slug = build_unique_slug(self, self.name, "product")
 
 
 class ProductImage(models.Model):

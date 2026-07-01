@@ -1,5 +1,7 @@
 from django.db import models
 
+from main_app.services.slug import build_unique_slug
+
 
 class Manufacturer(models.Model):
     name = models.CharField(
@@ -75,6 +77,17 @@ class Manufacturer(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        slug_value = self.slug or self.name
+
+        if (
+            not self.slug
+            or Manufacturer.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+        ):
+            self.slug = build_unique_slug(self, slug_value, "manufacturer")
+
+        super().save(*args, **kwargs)
 
 
 class ManufacturerImage(models.Model):

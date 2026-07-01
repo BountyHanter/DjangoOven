@@ -27,7 +27,10 @@ class ProductDetailService:
             "name": product.name,
             "slug": product.slug,
             "manufacturer": (
-                product.manufacturer.name
+                {
+                    "id": product.manufacturer.id,
+                    "name": product.manufacturer.name,
+                }
                 if product.manufacturer
                 else None
             ),
@@ -35,10 +38,19 @@ class ProductDetailService:
             "discount_price": product.discount_price,
             "description": product.description,
             "schema": product.schema.url if product.schema else None,
+            "free_delivery": product.free_delivery,
+            "in_stock": product.in_stock,
+            "is_active": product.is_active,
             "is_new": product.is_new,
             "is_bestseller": product.is_bestseller,
             "priority": product.priority,
+            "sku": product.sku,
+            "series": product.series,
+            "seo_title": product.seo_title,
+            "seo_description": product.seo_description,
+            "seo_keywords": product.seo_keywords,
             "created_at": product.created_at,
+            "updated_at": product.updated_at,
             "sections": ProductDetailService._get_sections(product),
             "images": ProductDetailService._get_images(product),
             "videos": ProductDetailService._get_videos(product),

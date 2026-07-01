@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.utils.text import slugify
+
+from main_app.services.slug import build_unique_slug
 
 
 class Section(models.Model):
@@ -153,10 +154,15 @@ class Section(models.Model):
         return [s.id for s in self.get_descendants(include_self)]
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        slug_value = self.slug or self.name
 
-        if not self.slug:
-            self.slug = slugify(self.name)
+        if (
+            not self.slug
+            or Section.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+        ):
+            self.slug = build_unique_slug(self, slug_value, "section")
+
+        self.full_clean()
 
         super().save(*args, **kwargs)
 

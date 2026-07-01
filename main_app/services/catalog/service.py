@@ -760,6 +760,7 @@ class CatalogService:
 
         attribute_values_qs = ProductAttributeValue.objects.filter(
             product_id__in=product_ids,
+            attribute__hide_in_filter=False,
         )
 
         attribute_fields = (
@@ -864,7 +865,7 @@ class CatalogService:
             attribute_values_qs
             .filter(
                 attribute__type__in=CatalogService.BOOLEAN_TYPES,
-                value_bool__isnull=False,
+                value_bool=True,
             )
             .values(
                 *attribute_fields,

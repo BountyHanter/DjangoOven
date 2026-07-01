@@ -107,7 +107,6 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "finish-material",
         "fuel-type",
         "glass-lift",
-        "long-fire",
         "moshchnost",
         "steam-volume",
         "water-circuit",
@@ -151,19 +150,11 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert water_circuit["type"] == "boolean"
     assert _bool_counts(water_circuit) == {
         True: 2,
-        False: 2,
     }
 
     glass_lift = _attribute_by_slug(attributes, "glass-lift")
     assert _bool_counts(glass_lift) == {
         True: 2,
-        False: 2,
-    }
-
-    long_fire = _attribute_by_slug(attributes, "long-fire")
-    assert _bool_counts(long_fire) == {
-        True: 2,
-        False: 2,
     }
 
     filtered_response = client.get(
@@ -258,20 +249,6 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     )
     assert _bool_counts(filtered_water_circuit) == {
         True: 2,
-    }
-
-    filtered_glass_lift = _attribute_by_slug(
-        filtered_attributes,
-        "glass-lift",
-    )
-    assert _bool_counts(filtered_glass_lift) == {
-        False: 2,
-    }
-
-    filtered_long_fire = _attribute_by_slug(filtered_attributes, "long-fire")
-    assert _bool_counts(filtered_long_fire) == {
-        True: 1,
-        False: 1,
     }
 
 

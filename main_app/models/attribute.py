@@ -43,6 +43,11 @@ class ProductAttribute(models.Model):
         help_text="Имеет смысл в первую очередь для характеристик типа 'Выбор из списка'",
     )
 
+    hide_in_filter = models.BooleanField(
+        default=False,
+        verbose_name="Не выводить в фильтр",
+    )
+
     unit = models.CharField(
         max_length=32,
         blank=True,
@@ -52,7 +57,7 @@ class ProductAttribute(models.Model):
 
     class Meta:
         verbose_name = "Характеристика товара"
-        verbose_name_plural = "Характеристики товаров"
+        verbose_name_plural = "Характеристики"
         ordering = ["name"]
         indexes = [
             models.Index(fields=["slug"]),
@@ -69,7 +74,12 @@ class ProductAttribute(models.Model):
         return generate_attribute_slug(self)
 
     def save(self, *args, **kwargs):
-        if not self.slug:
+        if (
+            not self.slug
+            or ProductAttribute.objects.filter(slug=self.slug)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
             self.slug = self._generate_unique_slug()
 
         self.full_clean()
@@ -103,7 +113,7 @@ class ProductAttributeOption(models.Model):
 
     class Meta:
         verbose_name = "Вариант характеристики"
-        verbose_name_plural = "Варианты характеристик"
+        verbose_name_plural = "Значение характеристик"
         ordering = ["attribute__name", "value"]
         constraints = [
             models.UniqueConstraint(
@@ -132,7 +142,19 @@ class ProductAttributeOption(models.Model):
         return generate_attribute_option_slug(self)
 
     def save(self, *args, **kwargs):
-        if not self.slug:
+        duplicate_slug_exists = False
+
+        if self.slug and self.attribute_id:
+            duplicate_slug_exists = (
+                ProductAttributeOption.objects.filter(
+                    attribute_id=self.attribute_id,
+                    slug=self.slug,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+
+        if not self.slug or duplicate_slug_exists:
             self.slug = self._generate_unique_slug()
 
         self.full_clean()
@@ -194,7 +216,7 @@ class ProductAttributeValue(models.Model):
 
     class Meta:
         verbose_name = "Значение характеристики товара"
-        verbose_name_plural = "Значения характеристик товаров"
+        verbose_name_plural = "Выбранные характеристики"
         indexes = [
             models.Index(fields=["product", "attribute"]),
             models.Index(fields=["attribute", "option"]),
