@@ -131,13 +131,13 @@ def product_detail_data():
     ProductVideo.objects.create(
         product=product,
         url="https://video.example.com/products/legend-review.mp4",
-        preview_url="https://cdn.example.com/previews/legend-review.webp",
+        preview="products/video_previews/legend-review.webp",
         ordering=20,
     )
     ProductVideo.objects.create(
         product=product,
         url="https://www.youtube.com/watch?v=legend-installation",
-        preview_url="https://img.youtube.com/vi/legend-installation/maxresdefault.jpg",
+        preview="products/video_previews/legend-installation.webp",
         ordering=10,
     )
 
@@ -346,8 +346,8 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     assert data["videos"][0]["url"] == (
         "https://www.youtube.com/watch?v=legend-installation"
     )
-    assert data["videos"][0]["preview_url"] == (
-        "https://img.youtube.com/vi/legend-installation/maxresdefault.jpg"
+    assert data["videos"][0]["preview"] == (
+        "/media/products/video_previews/legend-installation.webp"
     )
     assert data["videos"][1]["url"] == (
         "https://video.example.com/products/legend-review.mp4"

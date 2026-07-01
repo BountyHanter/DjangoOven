@@ -12,6 +12,7 @@ from main_app.models.attribute import (
 class ProductAttributeOptionInlineFormSet(BaseInlineFormSet):
     def clean(self):
         used_slugs = set()
+        used_priorities = set()
 
         # Если редактируем уже существующую характеристику,
         # учитываем уже сохранённые варианты.
@@ -33,6 +34,18 @@ class ProductAttributeOptionInlineFormSet(BaseInlineFormSet):
 
             used_slugs.update(existing_slugs)
 
+            existing_priorities = ProductAttributeOption.objects.filter(
+                attribute=self.instance,
+                priority__gt=0,
+            ).exclude(
+                pk__in=current_form_pks,
+            ).values_list(
+                "priority",
+                flat=True,
+            )
+
+            used_priorities.update(existing_priorities)
+
         for form in self.forms:
             if not hasattr(form, "cleaned_data"):
                 continue
@@ -47,9 +60,22 @@ class ProductAttributeOptionInlineFormSet(BaseInlineFormSet):
 
             value = cleaned_data.get("value")
             slug = cleaned_data.get("slug")
+            priority = cleaned_data.get("priority") or 0
 
             if not value:
                 continue
+
+            if priority > 0:
+                if priority in used_priorities:
+                    form.add_error(
+                        "priority",
+                        (
+                            "Вариант с таким положительным приоритетом уже "
+                            "существует у этой характеристики"
+                        ),
+                    )
+
+                used_priorities.add(priority)
 
             if not slug:
                 base_slug = slugify(value) or "option"
@@ -77,6 +103,7 @@ class ProductAttributeOptionInline(admin.TabularInline):
         "id",
         "value",
         "slug",
+        "priority",
         "is_active",
     )
 
@@ -93,6 +120,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
     list_display = (
         "name",
         "type",
+        "priority",
         "allow_multiple",
         "hide_in_filter",
         "unit",
@@ -105,6 +133,11 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "hide_in_filter",
     )
 
+    ordering = (
+        "priority",
+        "id",
+    )
+
     search_fields = (
         "name",
         "slug",
@@ -115,6 +148,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "name",
         "slug",
         "type",
+        "priority",
         "allow_multiple",
         "hide_in_filter",
         "unit",
@@ -141,12 +175,19 @@ class ProductAttributeOptionAdmin(admin.ModelAdmin):
         "value",
         "attribute",
         "slug",
+        "priority",
         "is_active",
     )
 
     list_filter = (
         "attribute",
         "is_active",
+    )
+
+    ordering = (
+        "attribute__name",
+        "priority",
+        "id",
     )
 
     search_fields = (
@@ -164,6 +205,7 @@ class ProductAttributeOptionAdmin(admin.ModelAdmin):
         "attribute",
         "value",
         "slug",
+        "priority",
         "is_active",
     )
 

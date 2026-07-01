@@ -90,7 +90,7 @@ class ProductDetailService:
             {
                 "id": video.id,
                 "url": video.url,
-                "preview_url": video.preview_url,
+                "preview": video.preview.url if video.preview else None,
                 "ordering": video.ordering,
             }
             for video in product.videos.all()

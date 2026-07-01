@@ -201,9 +201,9 @@ class ProductVideo(models.Model):
         related_name="videos",
     )
 
-    preview_url = models.URLField(
-        max_length=500,
-        verbose_name="Ссылка на превью",
+    preview = models.ImageField(
+        upload_to="products/video_previews/",
+        verbose_name="Превью",
         null=True,
         blank=True,
     )

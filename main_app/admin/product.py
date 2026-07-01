@@ -1,10 +1,17 @@
 from django import forms
 from django.contrib import admin
 from django.db import models
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.urls import path
 from django.utils.html import format_html
 
-from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
-from main_app.models.attribute import ProductAttributeValue
+from main_app.admin.forms.product import (
+    ProductAdminForm,
+    ProductAttributeValueInlineForm,
+    ProductDocumentInlineForm,
+)
+from main_app.models.attribute import ProductAttribute, ProductAttributeValue
 from main_app.models.parser import ParserResult
 from main_app.models.product import Product, ProductImage, ProductDocument, ProductVideo
 
@@ -28,8 +35,9 @@ class ParserResultInline(admin.StackedInline):
     )
 
 
-class ProductAttributeValueInline(admin.TabularInline):
+class ProductAttributeValueInline(admin.StackedInline):
     model = ProductAttributeValue
+    form = ProductAttributeValueInlineForm
     extra = 1
 
     fields = (
@@ -42,7 +50,6 @@ class ProductAttributeValueInline(admin.TabularInline):
 
     autocomplete_fields = (
         "attribute",
-        "option",
     )
 
     formfield_overrides = {
@@ -56,6 +63,12 @@ class ProductAttributeValueInline(admin.TabularInline):
     }
 
     show_change_link = True
+
+    class Media:
+        js = ("admin/js/product_attribute_values.js",)
+        css = {
+            "all": ("admin/css/product_attribute_values.css",)
+        }
 
 
 class ProductImageInline(admin.TabularInline):
@@ -87,7 +100,7 @@ class ProductDocumentInline(admin.TabularInline):
 class ProductVideoInline(admin.TabularInline):
     model = ProductVideo
     extra = 1
-    fields = ("url", "preview_url", "ordering")
+    fields = ("url", "preview", "ordering")
     ordering = ("ordering",)
 
 
@@ -201,6 +214,45 @@ class ProductAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "attribute-meta/<int:attribute_id>/",
+                self.admin_site.admin_view(self.attribute_meta_view),
+                name="main_app_product_attribute_meta",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def attribute_meta_view(self, request, attribute_id):
+        attribute = get_object_or_404(ProductAttribute, pk=attribute_id)
+        options = []
+
+        if attribute.type == ProductAttribute.AttributeType.CHOICE:
+            options = [
+                {
+                    "id": option.id,
+                    "value": option.value,
+                }
+                for option in attribute.options.annotate(
+                    priority_sort_group=models.Case(
+                        models.When(priority=0, then=models.Value(1)),
+                        default=models.Value(0),
+                        output_field=models.IntegerField(),
+                    )
+                ).order_by("priority_sort_group", "priority", "id")
+            ]
+
+        return JsonResponse(
+            {
+                "id": attribute.id,
+                "type": attribute.type,
+                "options": options,
+            }
+        )
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

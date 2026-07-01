@@ -103,6 +103,14 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert accessories["products_count"] == 2
 
     attributes = data["attributes"]
+    assert [attribute["slug"] for attribute in attributes] == [
+        "finish-material",
+        "fuel-type",
+        "moshchnost",
+        "water-circuit",
+        "steam-volume",
+        "glass-lift",
+    ]
     assert {attribute["slug"] for attribute in attributes} == {
         "finish-material",
         "fuel-type",
@@ -116,6 +124,11 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert fuel["type"] == "choice"
     assert fuel["allow_multiple"] is False
     assert fuel["products_count"] == 4
+    assert [option["slug"] for option in fuel["options"]] == [
+        "gas",
+        "wood",
+        "electric",
+    ]
     assert _option_counts(fuel) == {
         "electric": 1,
         "gas": 1,
@@ -126,6 +139,12 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert finish["type"] == "choice"
     assert finish["allow_multiple"] is True
     assert finish["products_count"] == 4
+    assert [option["slug"] for option in finish["options"]] == [
+        "soapstone",
+        "steel",
+        "ceramic",
+        "cast-iron",
+    ]
     assert _option_counts(finish) == {
         "cast-iron": 1,
         "ceramic": 1,

@@ -19,18 +19,32 @@ def _build_unique_slug(value, fallback, max_length, queryset):
 def validate_attribute(attribute):
     from main_app.models.attribute import ProductAttribute
 
+    errors = {}
+
     if (
         attribute.allow_multiple
         and attribute.type != ProductAttribute.AttributeType.CHOICE
     ):
-        raise ValidationError(
-            {
-                "allow_multiple": (
-                    "Несколько значений разрешены только для типа "
-                    "'Выбор из списка'"
-                )
-            }
+        errors["allow_multiple"] = (
+            "Несколько значений разрешены только для типа "
+            "'Выбор из списка'"
         )
+
+    if attribute.priority > 0:
+        priority_exists = (
+            ProductAttribute.objects
+            .filter(priority=attribute.priority)
+            .exclude(pk=attribute.pk)
+            .exists()
+        )
+
+        if priority_exists:
+            errors["priority"] = (
+                "Характеристика с таким положительным приоритетом уже существует"
+            )
+
+    if errors:
+        raise ValidationError(errors)
 
 
 def generate_attribute_slug(attribute):
@@ -51,7 +65,9 @@ def validate_attribute_option(option):
     if not option.attribute_id:
         return
 
-    from main_app.models.attribute import ProductAttribute
+    from main_app.models.attribute import ProductAttribute, ProductAttributeOption
+
+    errors = {}
 
     attribute_type = (
         ProductAttribute.objects.filter(pk=option.attribute_id)
@@ -60,14 +76,30 @@ def validate_attribute_option(option):
     )
 
     if attribute_type and attribute_type != ProductAttribute.AttributeType.CHOICE:
-        raise ValidationError(
-            {
-                "attribute": (
-                    "Варианты можно добавлять только для характеристик "
-                    "типа 'Выбор из списка'"
-                )
-            }
+        errors["attribute"] = (
+            "Варианты можно добавлять только для характеристик "
+            "типа 'Выбор из списка'"
         )
+
+    if option.priority > 0:
+        priority_exists = (
+            ProductAttributeOption.objects
+            .filter(
+                attribute_id=option.attribute_id,
+                priority=option.priority,
+            )
+            .exclude(pk=option.pk)
+            .exists()
+        )
+
+        if priority_exists:
+            errors["priority"] = (
+                "Вариант с таким положительным приоритетом уже существует "
+                "у этой характеристики"
+            )
+
+    if errors:
+        raise ValidationError(errors)
 
 
 def generate_attribute_option_slug(option):

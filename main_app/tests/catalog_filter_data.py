@@ -106,18 +106,21 @@ def create_catalog_filter_dataset():
         name="Тип топлива",
         slug="fuel-type",
         type=ProductAttribute.AttributeType.CHOICE,
+        priority=2,
     )
     finish = ProductAttribute.objects.create(
         name="Материал отделки",
         slug="finish-material",
         type=ProductAttribute.AttributeType.CHOICE,
         allow_multiple=True,
+        priority=1,
     )
     power = ProductAttribute.objects.create(
         name="Мощность",
         slug="moshchnost",
         type=ProductAttribute.AttributeType.NUMBER,
         unit="кВт",
+        priority=3,
     )
     steam_volume = ProductAttribute.objects.create(
         name="Объем парной",
@@ -129,6 +132,7 @@ def create_catalog_filter_dataset():
         name="Водяной контур",
         slug="water-circuit",
         type=ProductAttribute.AttributeType.BOOLEAN,
+        priority=4,
     )
     glass_lift = ProductAttribute.objects.create(
         name="Подъемное стекло",
@@ -146,6 +150,7 @@ def create_catalog_filter_dataset():
         attribute=fuel,
         value="Дрова",
         slug="wood",
+        priority=2,
     )
     electric_fuel = ProductAttributeOption.objects.create(
         attribute=fuel,
@@ -156,17 +161,20 @@ def create_catalog_filter_dataset():
         attribute=fuel,
         value="Газ",
         slug="gas",
+        priority=1,
     )
 
     steel = ProductAttributeOption.objects.create(
         attribute=finish,
         value="Сталь",
         slug="steel",
+        priority=2,
     )
     soapstone = ProductAttributeOption.objects.create(
         attribute=finish,
         value="Талькохлорит",
         slug="soapstone",
+        priority=1,
     )
     ceramic = ProductAttributeOption.objects.create(
         attribute=finish,
@@ -207,7 +215,7 @@ def create_catalog_filter_dataset():
     ProductVideo.objects.create(
         product=aurora_pro,
         url="https://video.example.com/aurora-pro-review.mp4",
-        preview_url="https://cdn.example.com/aurora-pro-preview.webp",
+        preview="products/video_previews/aurora-pro-preview.webp",
         ordering=1,
     )
     _add_choice(aurora_pro, fuel, wood_fuel)
@@ -292,7 +300,7 @@ def create_catalog_filter_dataset():
     ProductVideo.objects.create(
         product=bathlab_gas,
         url="https://video.example.com/bathlab-gas-installation.mp4",
-        preview_url="https://cdn.example.com/bathlab-gas-preview.webp",
+        preview="products/video_previews/bathlab-gas-preview.webp",
         ordering=1,
     )
     _add_choice(bathlab_gas, fuel, gas_fuel)

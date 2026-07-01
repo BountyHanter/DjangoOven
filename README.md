@@ -87,6 +87,14 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
       "id": 1,
       "name": "Каталог",
       "slug": "catalog-root",
+      "description_main": "Главный раздел каталога",
+      "image": "/media/sections/catalog-root.webp",
+      "browser_title": "Каталог печей",
+      "description": "Полное описание каталога",
+      "meta_description": "SEO описание каталога",
+      "meta_keywords": "каталог, печи",
+      "ordering": 1,
+      "count": 5,
       "products_count": 5,
       "children": []
     }
@@ -110,11 +118,77 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
 ```
 
 - `sections` возвращаются всегда, только активные, с любой вложенностью.
+- `sections` содержит SEO/content-поля раздела, нужные для каталожных страниц.
+- `count` и `products_count` сейчас дублируют одно значение: количество товаров в разделе с учетом дочерних разделов.
 - `products_count` у раздела учитывает товары в самом разделе и во всех дочерних разделах.
 - Разделы без товаров не скрываются, у них `products_count: 0`.
 - `price.min/max` считаются по итоговой цене товара: `discount_price`, если она есть, иначе `price`.
 - `manufacturers` и `attributes` могут отсутствовать, если для текущей выборки нет данных.
 - Все счетчики и диапазоны пересчитываются с учетом переданного `filters`.
+- Характеристики с галочкой "Не выводить в фильтр" не попадают в `attributes`, но остаются в карточке товара.
+- Порядок `attributes` и `options` задается приоритетом в админке: положительные приоритеты идут первыми по возрастанию, `0` означает "без ручного приоритета" и идет после них. Сам `priority` в API не возвращается.
+
+### Поля ответа фильтров
+
+Раздел (`sections`):
+
+| Поле | Название |
+|---|---|
+| `id` | ID раздела |
+| `name` | Название |
+| `slug` | ЧПУ / slug |
+| `description_main` | Описание для главной |
+| `image` | Изображение раздела |
+| `browser_title` | Заголовок вкладки браузера |
+| `description` | Описание |
+| `meta_description` | Описание страницы для поиска |
+| `meta_keywords` | Ключевые слова для поиска |
+| `ordering` | Порядок |
+| `count` | Количество товаров |
+| `products_count` | Количество товаров |
+| `children` | Дочерние разделы |
+
+Производитель (`manufacturers`):
+
+| Поле | Название |
+|---|---|
+| `id` | ID производителя |
+| `name` | Производитель |
+| `slug` | ЧПУ / slug |
+| `logo` | Логотип |
+| `products_count` | Количество товаров |
+
+Характеристика фильтра (`attributes`):
+
+| Поле | Название |
+|---|---|
+| `id` | ID характеристики |
+| `name` | Название характеристики |
+| `slug` | Slug |
+| `type` | Тип характеристики |
+| `unit` | Единица измерения |
+| `allow_multiple` | Можно несколько значений |
+| `products_count` | Количество товаров |
+| `options` | Варианты значения для `choice` |
+| `min` | Минимальное значение для `number` |
+| `max` | Максимальное значение для `number` |
+| `values` | Значения для `boolean` |
+
+Вариант характеристики (`options`):
+
+| Поле | Название |
+|---|---|
+| `id` | ID варианта |
+| `value` | Значение |
+| `slug` | Slug |
+| `products_count` | Количество товаров |
+
+Значение boolean-фильтра (`values`):
+
+| Поле | Название |
+|---|---|
+| `value` | Значение |
+| `products_count` | Количество товаров |
 
 ### Форматы атрибутов
 
@@ -168,11 +242,12 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
   "allow_multiple": false,
   "products_count": 4,
   "values": [
-    { "value": true, "products_count": 2 },
-    { "value": false, "products_count": 2 }
+    { "value": true, "products_count": 2 }
   ]
 }
 ```
+
+Для boolean-фильтров в `/catalog/filters/` выводится только `true` ("Да"). `false` ("Нет") в фильтрах не показывается, чтобы не смешивать явное "Нет" с незаполненными характеристиками.
 
 ## 5. Products Catalog API
 
@@ -314,6 +389,40 @@ Boolean-характеристика:
 - `images` сортируются так, чтобы главное изображение было первым, затем `ordering`, затем `id`.
 - `is_main` в изображении приходит только у главного изображения; у остальных ключ может отсутствовать.
 
+Поля элемента товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID товара |
+| `name` | Наименование |
+| `sections` | Разделы |
+| `manufacturer` | Производитель |
+| `is_new` | Новинка |
+| `is_bestseller` | Хит продаж |
+| `priority` | Приоритет |
+| `has_video` | Есть видео |
+| `price` | Обычная цена |
+| `discount_price` | Цена со скидкой |
+| `power` | Мощность |
+| `images` | Изображения товара |
+
+Поля изображения:
+
+| Поле | Название |
+|---|---|
+| `id` | ID изображения |
+| `image` | Изображение |
+| `ordering` | Порядок |
+| `is_main` | Главное изображение |
+
+Поля раздела в `sections`:
+
+| Поле | Название |
+|---|---|
+| `id` | ID раздела |
+| `name` | Название |
+| `slug` | ЧПУ / slug |
+
 Если товар привязан к нескольким разделам, в `sections` будет несколько путей. Для хлебных крошек страницы товара можно взять нужный путь и добавить перед ним `Главная`, а после него название товара:
 
 ```text
@@ -331,14 +440,27 @@ Boolean-характеристика:
   "id": 15,
   "name": "Harvia Legend GreenFlame 240 Duo",
   "slug": "harvia-legend-greenflame-240-duo",
-  "manufacturer": "Harvia Legend",
+  "manufacturer": {
+    "id": 1,
+    "name": "Harvia Legend"
+  },
   "price": 189900,
   "discount_price": 174500,
   "description": "Подробное описание товара",
+  "schema": "/media/products/schema/legend-240-schema.pdf",
+  "free_delivery": true,
+  "in_stock": true,
+  "is_active": true,
   "is_new": true,
   "is_bestseller": true,
   "priority": 7,
+  "sku": "HL-240-DUO, HL-240-DUO-GF",
+  "series": "Legend GreenFlame",
+  "seo_title": "Harvia Legend GreenFlame 240 Duo купить",
+  "seo_description": "Карточка товара Harvia Legend GreenFlame 240 Duo",
+  "seo_keywords": "harvia legend, greenflame, банная печь",
   "created_at": "2026-03-07T12:44:10.123456+0000",
+  "updated_at": "2026-03-08T12:44:10.123456+0000",
   "sections": [
     [
       { "id": 1, "name": "Каталог", "slug": "catalog-root" },
@@ -352,7 +474,45 @@ Boolean-характеристика:
 }
 ```
 
-Текущий detail-контракт отдает только перечисленные поля. SEO-поля, `sku`, `series`, `schema`, `video_preview`, `in_stock` и `free_delivery` сейчас в ответе detail не приходят.
+Поля карточки товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID товара |
+| `name` | Наименование |
+| `slug` | Slug |
+| `manufacturer` | Производитель |
+| `price` | Обычная цена |
+| `discount_price` | Цена со скидкой |
+| `description` | Описание |
+| `schema` | Схема (формат pdf) |
+| `free_delivery` | Бесплатная доставка |
+| `in_stock` | В наличии на складе |
+| `is_active` | Активен в каталоге |
+| `is_new` | Новинка |
+| `is_bestseller` | Хит продаж |
+| `priority` | Приоритет |
+| `sku` | Артикул(ы) |
+| `series` | Серия товара |
+| `seo_title` | Название страницы товара |
+| `seo_description` | Описание страницы товара |
+| `seo_keywords` | Ключевые слова товара |
+| `created_at` | Создан |
+| `updated_at` | Обновлён |
+| `sections` | Разделы |
+| `images` | Изображения товара |
+| `videos` | Видео товара |
+| `documents` | Документы товара |
+| `attributes` | Характеристики |
+
+`manufacturer` — объект `{ id, name }` или `null`.
+
+Поля производителя в карточке товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID производителя |
+| `name` | Производитель |
 
 ### Изображения, видео, документы
 
@@ -373,7 +533,7 @@ Boolean-характеристика:
 {
   "id": 1,
   "url": "https://www.youtube.com/watch?v=legend-installation",
-  "preview_url": "https://img.youtube.com/vi/legend-installation/maxresdefault.jpg",
+  "preview": "/media/products/video_previews/legend-installation.webp",
   "ordering": 10
 }
 ```
@@ -388,6 +548,35 @@ Boolean-характеристика:
   "ordering": 20
 }
 ```
+
+Поля изображения товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID изображения |
+| `image` | Изображение |
+| `ordering` | Порядок |
+| `is_main` | Главное изображение |
+
+Поля видео товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID видео |
+| `url` | Ссылка на видео |
+| `preview` | Превью видео |
+| `ordering` | Порядок |
+
+`preview` — URL загруженного файла превью из media. В админке превью загружается файлом, а не вводится внешней ссылкой.
+
+Поля документа товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID документа |
+| `title` | Название документа |
+| `file` | Файл |
+| `ordering` | Порядок |
 
 ### Характеристики товара
 
@@ -461,6 +650,19 @@ Boolean-характеристика:
 }
 ```
 
+Поля характеристики товара:
+
+| Поле | Название |
+|---|---|
+| `id` | ID характеристики |
+| `name` | Название характеристики |
+| `slug` | Slug |
+| `type` | Тип характеристики |
+| `unit` | Единица измерения |
+| `value` | Значение характеристики |
+
+Для `choice` значение — объект `{ id, name, slug }` или массив таких объектов, если у характеристики включено несколько значений.
+
 ## 7. Portfolio API
 
 ### `GET /api/v1/catalog/portfolio/`
@@ -508,6 +710,32 @@ curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&manufacturer=1,2
 }
 ```
 
+Поля элемента портфолио:
+
+| Поле | Название |
+|---|---|
+| `id` | ID портфолио |
+| `title` | Название |
+| `main` | На главную |
+| `duration` | Срок работ |
+| `date` | Дата работ |
+| `object_type` | Тип объекта |
+| `price` | Стоимость |
+| `video_link` | Ссылка на видео |
+| `type_work` | Тип работ |
+| `product_id` | ID товара |
+| `product_name` | Наименование товара |
+| `images` | Фото портфолио |
+| `created_at` | Создан |
+
+Поля изображения портфолио:
+
+| Поле | Название |
+|---|---|
+| `id` | ID фото |
+| `image` | Фото |
+| `order` | Порядок |
+
 ### `GET /api/v1/catalog/products/{product_id}/portfolio/`
 
 Возвращает портфолио конкретного товара. Остальные query-параметры работают так же, как у общего списка.
@@ -542,6 +770,24 @@ curl "http://127.0.0.1:8000/api/v1/catalog/portfolio/?section=2&manufacturer=1,2
 }
 ```
 
+Поля отзыва:
+
+| Поле | Название |
+|---|---|
+| `id` | ID отзыва |
+| `name` | Название |
+| `client_name` | Клиент |
+| `installation_time` | Время затраченное на монтаж |
+| `location` | Локация |
+| `date` | Дата монтажа |
+| `work_description` | Что сделано |
+| `price` | Стоимость |
+| `video_url` | Ссылка на видео |
+| `preview_image` | Превью видео |
+| `product_id` | ID товара |
+| `product_name` | Наименование товара |
+| `created_at` | Создан |
+
 ## 9. Manufacturers API
 
 ### `GET /api/v1/catalog/manufacturers/`
@@ -555,11 +801,14 @@ Query-параметры:
 
 Поля элемента:
 
-- `id`
-- `name`
-- `slug`
-- `logo`
-- `priority`
+| Поле | Название |
+|---|---|
+| `id` | ID производителя |
+| `name` | Производитель |
+| `slug` | ЧПУ / slug |
+| `logo` | Логотип |
+| `priority` | Приоритет |
+| `count` | Количество товаров |
 
 ### `GET /api/v1/catalog/manufacturers/{id}/`
 
@@ -567,18 +816,30 @@ Query-параметры:
 
 Поля:
 
-- `id`
-- `name`
-- `slug`
-- `is_active`
-- `logo`
-- `priority`
-- `seo_title`
-- `seo_description`
-- `seo_keywords`
-- `description`
-- `video`
-- `images` — массив `{ id, image, ordering }`
+| Поле | Название |
+|---|---|
+| `id` | ID производителя |
+| `name` | Производитель |
+| `slug` | ЧПУ / slug |
+| `is_active` | Активен |
+| `logo` | Логотип |
+| `priority` | Приоритет |
+| `seo_title` | Название страницы |
+| `seo_description` | Описание страницы |
+| `seo_keywords` | Ключевые слова |
+| `description` | Полное описание |
+| `video` | Видео |
+| `images` | Фото производителя |
+
+`images` — массив объектов `{ id, image, ordering }`.
+
+Поля фото производителя:
+
+| Поле | Название |
+|---|---|
+| `id` | ID фото |
+| `image` | Фото |
+| `ordering` | Порядок |
 
 ## 10. Banners API
 
@@ -597,10 +858,12 @@ Query-параметры:
 
 Поля элемента:
 
-- `id`
-- `title`
-- `image`
-- `link`
+| Поле | Название |
+|---|---|
+| `id` | ID баннера |
+| `title` | Название |
+| `image` | Картинка |
+| `link` | Ссылка |
 
 ## 11. Send Email Request API
 
@@ -619,6 +882,13 @@ Query-параметры:
 
 - `phone` — строка от 5 до 20 символов после trim;
 - `link` должен вести на `kamini-melnika.ru` или `www.kamini-melnika.ru`.
+
+Поля запроса:
+
+| Поле | Название |
+|---|---|
+| `phone` | Телефон |
+| `link` | Ссылка |
 
 Успешный ответ:
 

@@ -680,6 +680,37 @@ class CatalogService:
         return roots
 
     @staticmethod
+    def _filter_priority_sort_key(item):
+        priority = item.get("_priority") or 0
+
+        return (
+            priority == 0,
+            priority,
+            item["id"],
+        )
+
+    @staticmethod
+    def _sort_filter_attributes(attributes):
+        sorted_attributes = sorted(
+            attributes,
+            key=CatalogService._filter_priority_sort_key,
+        )
+
+        for attribute in sorted_attributes:
+            if "options" in attribute:
+                attribute["options"] = sorted(
+                    attribute["options"],
+                    key=CatalogService._filter_priority_sort_key,
+                )
+
+                for option in attribute["options"]:
+                    option.pop("_priority", None)
+
+            attribute.pop("_priority", None)
+
+        return sorted_attributes
+
+    @staticmethod
     def get_available_filters(products_qs):
         """
         Динамическая выдача доступных фильтров.
@@ -770,6 +801,7 @@ class CatalogService:
             "attribute__type",
             "attribute__unit",
             "attribute__allow_multiple",
+            "attribute__priority",
         )
 
         attribute_counts = {
@@ -793,6 +825,7 @@ class CatalogService:
                     "type": row["attribute__type"],
                     "unit": row["attribute__unit"],
                     "allow_multiple": row["attribute__allow_multiple"],
+                    "_priority": row["attribute__priority"],
                     "products_count": attribute_counts.get(
                         row["attribute_id"],
                         0,
@@ -815,9 +848,10 @@ class CatalogService:
                 "option_id",
                 "option__value",
                 "option__slug",
+                "option__priority",
             )
             .annotate(products_count=Count("product_id", distinct=True))
-            .order_by("attribute__name", "option__value")
+            .order_by("attribute_id", "option_id")
         )
 
         for row in choice_rows:
@@ -829,6 +863,7 @@ class CatalogService:
                     "id": row["option_id"],
                     "value": row["option__value"],
                     "slug": row["option__slug"],
+                    "_priority": row["option__priority"],
                     "products_count": row["products_count"],
                 }
             )
@@ -848,7 +883,7 @@ class CatalogService:
                 max=Max("value_number"),
                 products_count=Count("product_id", distinct=True),
             )
-            .order_by("attribute__name")
+            .order_by("attribute_id")
         )
 
         for row in number_rows:
@@ -872,7 +907,7 @@ class CatalogService:
                 "value_bool",
             )
             .annotate(products_count=Count("product_id", distinct=True))
-            .order_by("attribute__name", "-value_bool")
+            .order_by("attribute_id", "-value_bool")
         )
 
         for row in bool_rows:
@@ -886,9 +921,8 @@ class CatalogService:
                 }
             )
 
-        attributes = sorted(
+        attributes = CatalogService._sort_filter_attributes(
             attributes_map.values(),
-            key=lambda item: item["name"],
         )
 
         result = {

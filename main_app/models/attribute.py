@@ -48,6 +48,12 @@ class ProductAttribute(models.Model):
         verbose_name="Не выводить в фильтр",
     )
 
+    priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Приоритет",
+        help_text="0 — без ручного приоритета; положительные значения не должны повторяться",
+    )
+
     unit = models.CharField(
         max_length=32,
         blank=True,
@@ -62,6 +68,14 @@ class ProductAttribute(models.Model):
         indexes = [
             models.Index(fields=["slug"]),
             models.Index(fields=["type"]),
+            models.Index(fields=["priority"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["priority"],
+                condition=Q(priority__gt=0),
+                name="unique_positive_attribute_priority",
+            ),
         ]
 
     def __str__(self):
@@ -111,6 +125,12 @@ class ProductAttributeOption(models.Model):
         verbose_name="Активно",
     )
 
+    priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Приоритет",
+        help_text="0 — без ручного приоритета; положительные значения не должны повторяться внутри характеристики",
+    )
+
     class Meta:
         verbose_name = "Вариант характеристики"
         verbose_name_plural = "Значение характеристик"
@@ -124,10 +144,16 @@ class ProductAttributeOption(models.Model):
                 fields=["attribute", "value"],
                 name="unique_attribute_option_value",
             ),
+            models.UniqueConstraint(
+                fields=["attribute", "priority"],
+                condition=Q(priority__gt=0),
+                name="unique_positive_attribute_option_priority",
+            ),
         ]
         indexes = [
             models.Index(fields=["slug"]),
             models.Index(fields=["is_active"]),
+            models.Index(fields=["priority"]),
         ]
 
     def __str__(self):
