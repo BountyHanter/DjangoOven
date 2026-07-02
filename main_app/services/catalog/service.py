@@ -163,7 +163,10 @@ class CatalogService:
         return list(result_ids)
 
     @staticmethod
-    def get_products_queryset(filters: list[dict] | None = None):
+    def get_products_queryset(
+        filters: list[dict] | None = None,
+        ordering: str | None = None,
+    ):
         """
         Базовая выдача товаров каталога:
         - только активные товары
@@ -174,17 +177,21 @@ class CatalogService:
         """
 
         qs = CatalogService.apply_filters(filters or [])
-        qs = CatalogService.apply_sorting(qs)
+        qs = CatalogService.apply_sorting(qs, ordering)
 
         return qs
 
     @staticmethod
-    def get_products_page(request, filters: list[dict] | None = None):
+    def get_products_page(
+        request,
+        filters: list[dict] | None = None,
+        ordering: str | None = None,
+    ):
         """
         Базовая выдача товаров с пагинацией.
         """
 
-        qs = CatalogService.get_products_queryset(filters)
+        qs = CatalogService.get_products_queryset(filters, ordering)
 
         paginator = DefaultPagination()
         page = paginator.paginate_queryset(qs, request)
@@ -196,7 +203,10 @@ class CatalogService:
         }
 
     @staticmethod
-    def get_preview_products_queryset(filters: list[dict] | None = None):
+    def get_preview_products_queryset(
+        filters: list[dict] | None = None,
+        ordering: str | None = None,
+    ):
         """
         Queryset для preview-карточек товаров.
 
@@ -211,17 +221,21 @@ class CatalogService:
 
         qs = CatalogService.apply_filters(filters or [])
         qs = CatalogService.prepare_preview_queryset(qs)
-        qs = CatalogService.apply_sorting(qs)
+        qs = CatalogService.apply_sorting(qs, ordering)
 
         return qs
 
     @staticmethod
-    def get_preview_products_page(request, filters: list[dict] | None = None):
+    def get_preview_products_page(
+        request,
+        filters: list[dict] | None = None,
+        ordering: str | None = None,
+    ):
         """
         Preview-выдача товаров с пагинацией.
         """
 
-        qs = CatalogService.get_preview_products_queryset(filters)
+        qs = CatalogService.get_preview_products_queryset(filters, ordering)
 
         paginator = DefaultPagination()
         page = paginator.paginate_queryset(qs, request)
@@ -493,10 +507,11 @@ class CatalogService:
         return qs
 
     @staticmethod
-    def apply_sorting(qs):
+    def apply_sorting(qs, ordering: str | None = None):
         """
         Сортировка каталога:
 
+        Если ordering не передан, используется сортировка по популярности:
         1. хит + приоритет
         2. хит без приоритета
         3. приоритет без хита
@@ -508,6 +523,23 @@ class CatalogService:
         Если товары одинаковые по группе/приоритету:
         - created_at DESC
         """
+
+        if ordering == "newest":
+            return qs.order_by("-created_at")
+
+        if ordering in {"price_asc", "price_desc"}:
+            qs = qs.annotate(
+                actual_price=Coalesce(
+                    "discount_price",
+                    "price",
+                    output_field=IntegerField(),
+                )
+            )
+
+            if ordering == "price_asc":
+                return qs.order_by("actual_price", "-created_at")
+
+            return qs.order_by("-actual_price", "-created_at")
 
         qs = qs.annotate(
             sort_group=Case(
@@ -546,7 +578,7 @@ class CatalogService:
         - sections отдаём всегда;
         - вложенность любая;
         - разделы без товаров не скрываем;
-        - products_count считается с учётом всех потомков.
+        - count считается с учётом всех потомков.
         """
 
         section_rows = list(
@@ -604,7 +636,6 @@ class CatalogService:
                 "meta_keywords": section.meta_keywords,
                 "ordering": section.ordering,
                 "count": 0,
-                "products_count": 0,
                 "children": [],
                 "_parent_id": section.parent_id,
                 "_ordering": section.ordering,
@@ -657,10 +688,7 @@ class CatalogService:
                     )
                 )
 
-            products_count = len(product_ids)
-
-            section["count"] = products_count
-            section["products_count"] = products_count
+            section["count"] = len(product_ids)
 
             return product_ids
 
@@ -719,7 +747,7 @@ class CatalogService:
         На выход отдаёт:
         - sections всегда;
         - price всегда;
-        - has_discount всегда;
+        - has_discount и has_discount_count всегда;
         - manufacturers только если есть;
         - attributes только если есть.
         """
@@ -748,9 +776,10 @@ class CatalogService:
         # -------------------------
         # DISCOUNT
         # -------------------------
-        has_discount = products_qs.filter(
+        has_discount_count = products_qs.filter(
             discount_price__isnull=False,
-        ).exists()
+        ).count()
+        has_discount = has_discount_count > 0
 
         # -------------------------
         # MANUFACTURERS
@@ -932,6 +961,7 @@ class CatalogService:
                 "max": price_data["max_price"],
             },
             "has_discount": has_discount,
+            "has_discount_count": has_discount_count,
         }
 
         if manufacturers:

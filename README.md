@@ -95,7 +95,6 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
       "meta_keywords": "каталог, печи",
       "ordering": 1,
       "count": 5,
-      "products_count": 5,
       "children": []
     }
   ],
@@ -104,6 +103,7 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
     "max": 210000
   },
   "has_discount": true,
+  "has_discount_count": 2,
   "manufacturers": [
     {
       "id": 1,
@@ -119,10 +119,10 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
 
 - `sections` возвращаются всегда, только активные, с любой вложенностью.
 - `sections` содержит SEO/content-поля раздела, нужные для каталожных страниц.
-- `count` и `products_count` сейчас дублируют одно значение: количество товаров в разделе с учетом дочерних разделов.
-- `products_count` у раздела учитывает товары в самом разделе и во всех дочерних разделах.
-- Разделы без товаров не скрываются, у них `products_count: 0`.
+- `count` у раздела учитывает товары в самом разделе и во всех дочерних разделах.
+- Разделы без товаров не скрываются, у них `count: 0`.
 - `price.min/max` считаются по итоговой цене товара: `discount_price`, если она есть, иначе `price`.
+- `has_discount_count` содержит количество товаров со скидкой в текущей выборке.
 - `manufacturers` и `attributes` могут отсутствовать, если для текущей выборки нет данных.
 - Все счетчики и диапазоны пересчитываются с учетом переданного `filters`.
 - Характеристики с галочкой "Не выводить в фильтр" не попадают в `attributes`, но остаются в карточке товара.
@@ -145,7 +145,6 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
 | `meta_keywords` | Ключевые слова для поиска |
 | `ordering` | Порядок |
 | `count` | Количество товаров |
-| `products_count` | Количество товаров |
 | `children` | Дочерние разделы |
 
 Производитель (`manufacturers`):
@@ -333,16 +332,32 @@ Boolean-характеристика:
 
 `has_discount=true` возвращает товары с заполненным `discount_price`. `has_discount=false` возвращает товары без скидки.
 
-Старые query-параметры каталога вроде `section=`, `manufacturer=`, `fuel_type=`, `price_from=`, `price_to=`, `search=` и `ordering=` сейчас не являются контрактом `GET /catalog/products/`.
+Старые query-параметры каталога вроде `section=`, `manufacturer=`, `fuel_type=`, `price_from=`, `price_to=` и `search=` сейчас не являются контрактом `GET /catalog/products/`.
 
 ### Сортировка каталога
 
-Отдельный query-параметр сортировки сейчас не используется. Текущий порядок выдачи:
+Сортировка задается отдельным query-параметром `ordering`:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/?filters=%5B%5D&ordering=price_asc&page=1&page_size=9"
+```
+
+`ordering` опциональный. Если параметр не передан или передано неизвестное значение, используется сортировка по популярности:
 
 1. хиты (`is_bestseller=true`) с `priority`, где `1` — самый высокий приоритет;
 2. хиты без `priority`;
 3. товары с `priority`, но без флага хита;
 4. остальные товары, внутри группы сначала новые.
+
+Поддерживаемые значения `ordering`:
+
+| Значение | Сортировка |
+|---|---|
+| `newest` | Сначала новые |
+| `price_asc` | Сначала дешевые |
+| `price_desc` | Сначала дорогие |
+
+`price_asc` и `price_desc` сортируют по итоговой цене товара: `discount_price`, если она есть, иначе `price`.
 
 ### Элемент в `results`
 

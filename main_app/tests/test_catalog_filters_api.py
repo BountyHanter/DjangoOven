@@ -58,6 +58,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "max": 210000,
     }
     assert data["has_discount"] is True
+    assert data["has_discount_count"] == 2
 
     manufacturers = {
         manufacturer["slug"]: manufacturer
@@ -79,7 +80,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     gas = _section_by_slug(data["sections"], "gas-stoves")
     accessories = _section_by_slug(data["sections"], "accessories")
 
-    assert root["products_count"] == 5
+    assert "products_count" not in root
     assert root["count"] == 5
     assert root["description_main"] == "Главный раздел каталога"
     assert root["image"] == "/media/sections/catalog-root.webp"
@@ -88,7 +89,6 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert root["meta_description"] == "SEO описание каталога"
     assert root["meta_keywords"] == "каталог, печи"
     assert root["ordering"] == 1
-    assert stoves["products_count"] == 4
     assert stoves["count"] == 4
     assert stoves["description_main"] == "Раздел с печами"
     assert stoves["image"] == "/media/sections/stoves.webp"
@@ -97,10 +97,10 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert stoves["meta_description"] == "SEO описание печей"
     assert stoves["meta_keywords"] == "печи"
     assert stoves["ordering"] == 1
-    assert wood["products_count"] == 2
-    assert electric["products_count"] == 1
-    assert gas["products_count"] == 1
-    assert accessories["products_count"] == 2
+    assert wood["count"] == 2
+    assert electric["count"] == 1
+    assert gas["count"] == 1
+    assert accessories["count"] == 2
 
     attributes = data["attributes"]
     assert [attribute["slug"] for attribute in attributes] == [
@@ -207,6 +207,8 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "min": 99000,
         "max": 129000,
     }
+    assert filtered_data["has_discount"] is True
+    assert filtered_data["has_discount_count"] == 1
     assert [
         manufacturer["slug"]
         for manufacturer in filtered_data["manufacturers"]
@@ -229,17 +231,11 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "accessories",
     )
 
-    assert filtered_root["products_count"] == 2
     assert filtered_root["count"] == 2
-    assert filtered_stoves["products_count"] == 2
     assert filtered_stoves["count"] == 2
-    assert filtered_wood["products_count"] == 2
     assert filtered_wood["count"] == 2
-    assert filtered_electric["products_count"] == 0
     assert filtered_electric["count"] == 0
-    assert filtered_gas["products_count"] == 0
     assert filtered_gas["count"] == 0
-    assert filtered_accessories["products_count"] == 1
     assert filtered_accessories["count"] == 1
 
     filtered_attributes = filtered_data["attributes"]

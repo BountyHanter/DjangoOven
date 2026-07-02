@@ -31,6 +31,7 @@ class ProductCatalogAPIView(APIView):
         page_data = CatalogService.get_preview_products_page(
             request=request,
             filters=filters,
+            ordering=request.query_params.get("ordering"),
         )
 
         serializer = ProductPreviewSerializer(

@@ -10,14 +10,16 @@ from main_app.models import Product
 from main_app.tests.catalog_filter_data import create_catalog_filter_dataset
 
 
-def _request_products(client, filters):
-    return client.get(
-        reverse("catalog-products"),
-        {
-            "filters": json.dumps(filters),
-            "page_size": 100,
-        },
-    )
+def _request_products(client, filters, ordering=None):
+    params = {
+        "filters": json.dumps(filters),
+        "page_size": 100,
+    }
+
+    if ordering:
+        params["ordering"] = ordering
+
+    return client.get(reverse("catalog-products"), params)
 
 
 def _section_path_slugs(paths):
@@ -272,4 +274,71 @@ def test_catalog_products_api_orders_by_bestseller_priority_and_created_at():
         "Priority only",
         "Regular newer",
         "Regular older",
+    ]
+
+
+@pytest.mark.django_db
+def test_catalog_products_api_orders_by_requested_ordering():
+    client = APIClient()
+    now = timezone.now()
+
+    expensive_old = Product.objects.create(
+        name="Expensive old",
+        price=200000,
+        is_active=True,
+    )
+    Product.objects.filter(pk=expensive_old.pk).update(
+        created_at=now - timedelta(days=3),
+    )
+
+    discounted_new = Product.objects.create(
+        name="Discounted new",
+        price=150000,
+        discount_price=80000,
+        is_active=True,
+    )
+    Product.objects.filter(pk=discounted_new.pk).update(
+        created_at=now,
+    )
+
+    cheap_middle = Product.objects.create(
+        name="Cheap middle",
+        price=90000,
+        is_active=True,
+    )
+    Product.objects.filter(pk=cheap_middle.pk).update(
+        created_at=now - timedelta(days=1),
+    )
+
+    newest_response = _request_products(client, [], ordering="newest")
+    price_asc_response = _request_products(client, [], ordering="price_asc")
+    price_desc_response = _request_products(client, [], ordering="price_desc")
+
+    assert newest_response.status_code == 200
+    assert price_asc_response.status_code == 200
+    assert price_desc_response.status_code == 200
+
+    assert [
+        item["name"]
+        for item in newest_response.json()["results"]
+    ] == [
+        "Discounted new",
+        "Cheap middle",
+        "Expensive old",
+    ]
+    assert [
+        item["name"]
+        for item in price_asc_response.json()["results"]
+    ] == [
+        "Discounted new",
+        "Cheap middle",
+        "Expensive old",
+    ]
+    assert [
+        item["name"]
+        for item in price_desc_response.json()["results"]
+    ] == [
+        "Expensive old",
+        "Cheap middle",
+        "Discounted new",
     ]
