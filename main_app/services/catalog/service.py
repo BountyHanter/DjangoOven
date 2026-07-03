@@ -795,11 +795,12 @@ class CatalogService:
                 "manufacturer__name",
                 "manufacturer__slug",
                 "manufacturer__logo",
+                "manufacturer__priority",
             )
             .annotate(
                 products_count=Count("id", distinct=True),
             )
-            .order_by("manufacturer__name")
+            .order_by("-manufacturer__priority", "manufacturer__name")
         )
 
         manufacturers = [

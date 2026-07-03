@@ -47,7 +47,7 @@ def create_catalog_filter_dataset():
         slug="bathlab",
         logo="manufacturers/bathlab.webp",
         is_active=True,
-        priority=50,
+        priority=150,
     )
 
     root = Section.objects.create(

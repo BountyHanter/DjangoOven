@@ -65,8 +65,8 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         for manufacturer in data["manufacturers"]
     }
     assert list(manufacturers) == [
-        "aurora",
         "bathlab",
+        "aurora",
     ]
     assert manufacturers["aurora"]["name"] == "Aurora"
     assert manufacturers["aurora"]["logo"] == "manufacturers/aurora.webp"
