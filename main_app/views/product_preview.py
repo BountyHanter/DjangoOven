@@ -32,6 +32,7 @@ class ProductCatalogAPIView(APIView):
             request=request,
             filters=filters,
             ordering=request.query_params.get("ordering"),
+            search=request.query_params.get("search"),
         )
 
         serializer = ProductPreviewSerializer(

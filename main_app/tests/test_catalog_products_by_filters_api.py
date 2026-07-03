@@ -10,7 +10,7 @@ from main_app.models import Product
 from main_app.tests.catalog_filter_data import create_catalog_filter_dataset
 
 
-def _request_products(client, filters, ordering=None):
+def _request_products(client, filters, ordering=None, search=None):
     params = {
         "filters": json.dumps(filters),
         "page_size": 100,
@@ -18,6 +18,9 @@ def _request_products(client, filters, ordering=None):
 
     if ordering:
         params["ordering"] = ordering
+
+    if search is not None:
+        params["search"] = search
 
     return client.get(reverse("catalog-products"), params)
 
@@ -176,6 +179,27 @@ def test_catalog_products_api_filters_by_sections_attributes_and_price():
         item["name"]
         for item in discount_data["results"]
     ] == ["Aurora Pro 18 Duo"]
+
+
+@pytest.mark.django_db
+def test_catalog_products_api_searches_by_product_name():
+    client = APIClient()
+    create_catalog_filter_dataset()
+
+    response = _request_products(
+        client,
+        [],
+        search="compact",
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["count"] == 1
+    assert [
+        item["name"]
+        for item in data["results"]
+    ] == ["Aurora Compact 14"]
 
 
 @pytest.mark.parametrize(

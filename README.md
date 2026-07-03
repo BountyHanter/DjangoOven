@@ -261,6 +261,12 @@ fetch(`/api/v1/catalog/filters/?filters=${filters}`);
 curl "http://127.0.0.1:8000/api/v1/catalog/products/?filters=%5B%7B%22type%22%3A%22section%22%2C%22ids%22%3A%5B3%5D%7D%5D&page=1&page_size=9"
 ```
 
+Поиск по названию товара задается отдельным query-параметром `search` и работает как case-insensitive contains по полю `name`:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/catalog/products/?search=compact&filters=%5B%5D&page=1&page_size=9"
+```
+
 ### Поддерживаемые фильтры
 
 Между объектами фильтра применяется `AND`. Внутри `ids` и `option_ids` применяется `OR`.
@@ -333,7 +339,7 @@ Boolean-характеристика:
 
 `has_discount=true` возвращает товары с заполненным `discount_price`. `has_discount=false` возвращает товары без скидки.
 
-Старые query-параметры каталога вроде `section=`, `manufacturer=`, `fuel_type=`, `price_from=`, `price_to=` и `search=` сейчас не являются контрактом `GET /catalog/products/`.
+Старые query-параметры каталога вроде `section=`, `manufacturer=`, `fuel_type=`, `price_from=` и `price_to=` сейчас не являются контрактом `GET /catalog/products/`.
 
 ### Сортировка каталога
 

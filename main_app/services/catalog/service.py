@@ -206,6 +206,7 @@ class CatalogService:
     def get_preview_products_queryset(
         filters: list[dict] | None = None,
         ordering: str | None = None,
+        search: str | None = None,
     ):
         """
         Queryset для preview-карточек товаров.
@@ -220,6 +221,7 @@ class CatalogService:
         """
 
         qs = CatalogService.apply_filters(filters or [])
+        qs = CatalogService.apply_search(qs, search)
         qs = CatalogService.prepare_preview_queryset(qs)
         qs = CatalogService.apply_sorting(qs, ordering)
 
@@ -230,12 +232,17 @@ class CatalogService:
         request,
         filters: list[dict] | None = None,
         ordering: str | None = None,
+        search: str | None = None,
     ):
         """
         Preview-выдача товаров с пагинацией.
         """
 
-        qs = CatalogService.get_preview_products_queryset(filters, ordering)
+        qs = CatalogService.get_preview_products_queryset(
+            filters,
+            ordering,
+            search,
+        )
 
         paginator = DefaultPagination()
         page = paginator.paginate_queryset(qs, request)
@@ -505,6 +512,18 @@ class CatalogService:
                     )
 
         return qs
+
+    @staticmethod
+    def apply_search(qs, search: str | None = None):
+        if not search:
+            return qs
+
+        search_query = search.strip()
+
+        if not search_query:
+            return qs
+
+        return qs.filter(name__icontains=search_query)
 
     @staticmethod
     def apply_sorting(qs, ordering: str | None = None):
