@@ -18,7 +18,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 from config.utils.pagination import DefaultPagination
-from main_app.models.attribute import ProductAttributeValue
+from main_app.models.attribute import ProductAttribute, ProductAttributeValue
 from main_app.models.product import Product, ProductImage, ProductVideo
 from main_app.models.section import Section
 
@@ -319,9 +319,10 @@ class CatalogService:
         - считаем фильтры по полной отфильтрованной выборке
         """
 
-        qs = CatalogService.apply_filters(filters or [])
+        filters = filters or []
+        qs = CatalogService.apply_filters(filters)
 
-        return CatalogService.get_available_filters(qs)
+        return CatalogService.get_available_filters(qs, filters)
 
     @staticmethod
     def apply_filters(filters: list[dict]):
@@ -512,6 +513,49 @@ class CatalogService:
                     )
 
         return qs
+
+    @staticmethod
+    def _selected_multi_choice_attribute_ids(filters: list[dict]):
+        choice_attribute_ids = []
+
+        for f in filters:
+            if f.get("type") != "choice":
+                continue
+
+            attribute_id = CatalogService._normalize_id(
+                f.get("attribute_id"),
+            )
+            option_ids = CatalogService._normalize_id_list(
+                f.get("option_ids") or [],
+            )
+
+            if attribute_id and option_ids:
+                choice_attribute_ids.append(attribute_id)
+
+        if not choice_attribute_ids:
+            return set()
+
+        return set(
+            ProductAttribute.objects.filter(
+                id__in=choice_attribute_ids,
+                type=ProductAttribute.AttributeType.CHOICE,
+                allow_multiple=True,
+                hide_in_filter=False,
+            ).values_list("id", flat=True)
+        )
+
+    @staticmethod
+    def _filters_without_choice_attribute(filters: list[dict], attribute_id: int):
+        return [
+            f
+            for f in filters
+            if not (
+                f.get("type") == "choice"
+                and CatalogService._normalize_id(
+                    f.get("attribute_id"),
+                ) == attribute_id
+            )
+        ]
 
     @staticmethod
     def apply_search(qs, search: str | None = None):
@@ -758,7 +802,7 @@ class CatalogService:
         return sorted_attributes
 
     @staticmethod
-    def get_available_filters(products_qs):
+    def get_available_filters(products_qs, filters: list[dict] | None = None):
         """
         Динамическая выдача доступных фильтров.
 
@@ -771,6 +815,7 @@ class CatalogService:
         - attributes только если есть.
         """
 
+        filters = filters or []
         products_qs = products_qs.annotate(
             actual_price=Coalesce(
                 "discount_price",
@@ -885,13 +930,38 @@ class CatalogService:
         # -------------------------
         # CHOICE
         # -------------------------
-        choice_rows = (
-            attribute_values_qs
-            .filter(
-                attribute__type="choice",
-                option__isnull=False,
-                option__is_active=True,
+        selected_multi_choice_attribute_ids = (
+            CatalogService._selected_multi_choice_attribute_ids(filters)
+        )
+
+        def append_choice_rows(rows):
+            for row in rows:
+                attribute_data = get_attribute_data(row)
+                options = attribute_data.setdefault("options", [])
+
+                options.append(
+                    {
+                        "id": row["option_id"],
+                        "value": row["option__value"],
+                        "slug": row["option__slug"],
+                        "_priority": row["option__priority"],
+                        "products_count": row["products_count"],
+                    }
+                )
+
+        choice_values_qs = attribute_values_qs.filter(
+            attribute__type=ProductAttribute.AttributeType.CHOICE,
+            option__isnull=False,
+            option__is_active=True,
+        )
+
+        if selected_multi_choice_attribute_ids:
+            choice_values_qs = choice_values_qs.exclude(
+                attribute_id__in=selected_multi_choice_attribute_ids,
             )
+
+        choice_rows = (
+            choice_values_qs
             .values(
                 *attribute_fields,
                 "option_id",
@@ -903,19 +973,41 @@ class CatalogService:
             .order_by("attribute_id", "option_id")
         )
 
-        for row in choice_rows:
-            attribute_data = get_attribute_data(row)
-            options = attribute_data.setdefault("options", [])
+        append_choice_rows(choice_rows)
 
-            options.append(
-                {
-                    "id": row["option_id"],
-                    "value": row["option__value"],
-                    "slug": row["option__slug"],
-                    "_priority": row["option__priority"],
-                    "products_count": row["products_count"],
-                }
+        for attribute_id in selected_multi_choice_attribute_ids:
+            facet_filters = CatalogService._filters_without_choice_attribute(
+                filters,
+                attribute_id,
             )
+            facet_product_ids = (
+                CatalogService.apply_filters(facet_filters)
+                .order_by()
+                .values("id")
+            )
+
+            facet_choice_rows = (
+                ProductAttributeValue.objects
+                .filter(
+                    product_id__in=facet_product_ids,
+                    attribute_id=attribute_id,
+                    attribute__hide_in_filter=False,
+                    attribute__type=ProductAttribute.AttributeType.CHOICE,
+                    option__isnull=False,
+                    option__is_active=True,
+                )
+                .values(
+                    *attribute_fields,
+                    "option_id",
+                    "option__value",
+                    "option__slug",
+                    "option__priority",
+                )
+                .annotate(products_count=Count("product_id", distinct=True))
+                .order_by("attribute_id", "option_id")
+            )
+
+            append_choice_rows(facet_choice_rows)
 
         # -------------------------
         # NUMBER

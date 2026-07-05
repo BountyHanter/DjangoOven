@@ -267,6 +267,84 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     }
 
 
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_multi_choice_options_available():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "section",
+                        "ids": [dataset["sections"]["stoves"].id],
+                    },
+                    {
+                        "type": "choice",
+                        "attribute_id": dataset["attributes"]["finish"].id,
+                        "option_ids": [dataset["options"]["soapstone"].id],
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": 129000,
+        "max": 129000,
+    }
+
+    finish = _attribute_by_slug(data["attributes"], "finish-material")
+    assert finish["allow_multiple"] is True
+    assert finish["products_count"] == 1
+    assert [option["slug"] for option in finish["options"]] == [
+        "soapstone",
+        "steel",
+        "ceramic",
+        "cast-iron",
+    ]
+    assert _option_counts(finish) == {
+        "soapstone": 1,
+        "steel": 2,
+        "ceramic": 1,
+        "cast-iron": 1,
+    }
+
+
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_single_choice_options_filtered():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "choice",
+                        "attribute_id": dataset["attributes"]["fuel"].id,
+                        "option_ids": [dataset["options"]["wood_fuel"].id],
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    fuel = _attribute_by_slug(response.json()["attributes"], "fuel-type")
+    assert fuel["allow_multiple"] is False
+    assert _option_counts(fuel) == {
+        "wood": 2,
+    }
+
+
 @pytest.mark.parametrize(
     "raw_filters",
     [
