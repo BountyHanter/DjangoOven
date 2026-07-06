@@ -18,7 +18,12 @@ from django.db.models import (
 from django.db.models.functions import Coalesce
 
 from config.utils.pagination import DefaultPagination
-from main_app.models.attribute import ProductAttribute, ProductAttributeValue
+from main_app.models.attribute import (
+    ProductAttribute,
+    ProductAttributeOption,
+    ProductAttributeValue,
+)
+from main_app.models.manufacturer import Manufacturer
 from main_app.models.product import Product, ProductImage, ProductVideo
 from main_app.models.section import Section
 
@@ -545,6 +550,30 @@ class CatalogService:
         )
 
     @staticmethod
+    def _selected_choice_option_ids_by_attribute(filters: list[dict]):
+        selected_options = defaultdict(list)
+
+        for f in filters:
+            if f.get("type") != "choice":
+                continue
+
+            attribute_id = CatalogService._normalize_id(
+                f.get("attribute_id"),
+            )
+            option_ids = CatalogService._normalize_id_list(
+                f.get("option_ids") or [],
+            )
+
+            if not attribute_id or not option_ids:
+                continue
+
+            for option_id in option_ids:
+                if option_id not in selected_options[attribute_id]:
+                    selected_options[attribute_id].append(option_id)
+
+        return selected_options
+
+    @staticmethod
     def _filters_without_choice_attribute(filters: list[dict], attribute_id: int):
         return [
             f
@@ -598,19 +627,24 @@ class CatalogService:
         ]
 
     @staticmethod
-    def _has_selected_manufacturer_filter(filters: list[dict]):
+    def _selected_manufacturer_ids(filters: list[dict]):
+        manufacturer_ids = []
+
         for f in filters:
             if f.get("type") != "manufacturer":
                 continue
 
-            manufacturer_ids = CatalogService._normalize_id_list(
-                f.get("ids") or [],
+            manufacturer_ids.extend(
+                CatalogService._normalize_id_list(
+                    f.get("ids") or [],
+                )
             )
 
-            if manufacturer_ids:
-                return True
+        return manufacturer_ids
 
-        return False
+    @staticmethod
+    def _has_selected_manufacturer_filter(filters: list[dict]):
+        return bool(CatalogService._selected_manufacturer_ids(filters))
 
     @staticmethod
     def _filters_without_manufacturer(filters: list[dict]):
@@ -943,10 +977,58 @@ class CatalogService:
                 "name": item["manufacturer__name"],
                 "slug": item["manufacturer__slug"],
                 "logo": item["manufacturer__logo"],
+                "_priority": item["manufacturer__priority"],
                 "products_count": item["products_count"],
             }
             for item in manufacturers_qs
         ]
+        manufacturer_ids = {
+            manufacturer["id"]
+            for manufacturer in manufacturers
+        }
+        missing_selected_manufacturer_ids = [
+            manufacturer_id
+            for manufacturer_id in CatalogService._selected_manufacturer_ids(filters)
+            if manufacturer_id not in manufacturer_ids
+        ]
+
+        if missing_selected_manufacturer_ids:
+            selected_manufacturers = (
+                Manufacturer.objects
+                .filter(
+                    id__in=missing_selected_manufacturer_ids,
+                    is_active=True,
+                )
+                .values(
+                    "id",
+                    "name",
+                    "slug",
+                    "logo",
+                    "priority",
+                )
+            )
+
+            manufacturers.extend(
+                {
+                    "id": item["id"],
+                    "name": item["name"],
+                    "slug": item["slug"],
+                    "logo": item["logo"],
+                    "_priority": item["priority"],
+                    "products_count": 0,
+                }
+                for item in selected_manufacturers
+            )
+
+            manufacturers.sort(
+                key=lambda item: (
+                    -item["_priority"],
+                    item["name"],
+                )
+            )
+
+        for manufacturer in manufacturers:
+            manufacturer.pop("_priority", None)
 
         # -------------------------
         # ATTRIBUTES
@@ -1003,11 +1085,18 @@ class CatalogService:
         selected_multi_choice_attribute_ids = (
             CatalogService._selected_multi_choice_attribute_ids(filters)
         )
+        selected_choice_option_ids_by_attribute = (
+            CatalogService._selected_choice_option_ids_by_attribute(filters)
+        )
+        added_choice_option_ids_by_attribute = defaultdict(set)
 
         def append_choice_rows(rows):
             for row in rows:
                 attribute_data = get_attribute_data(row)
                 options = attribute_data.setdefault("options", [])
+                added_choice_option_ids_by_attribute[
+                    row["attribute_id"]
+                ].add(row["option_id"])
 
                 options.append(
                     {
@@ -1078,6 +1167,65 @@ class CatalogService:
             )
 
             append_choice_rows(facet_choice_rows)
+
+        missing_selected_option_ids_by_attribute = defaultdict(list)
+
+        for (
+            attribute_id,
+            option_ids,
+        ) in selected_choice_option_ids_by_attribute.items():
+            added_option_ids = added_choice_option_ids_by_attribute[attribute_id]
+
+            for option_id in option_ids:
+                if option_id not in added_option_ids:
+                    missing_selected_option_ids_by_attribute[attribute_id].append(
+                        option_id,
+                    )
+
+        for (
+            attribute_id,
+            option_ids,
+        ) in missing_selected_option_ids_by_attribute.items():
+            selected_options = (
+                ProductAttributeOption.objects.filter(
+                    attribute_id=attribute_id,
+                    id__in=option_ids,
+                    is_active=True,
+                    attribute__type=ProductAttribute.AttributeType.CHOICE,
+                    attribute__hide_in_filter=False,
+                )
+                .select_related("attribute")
+            )
+
+            for option in selected_options:
+                attribute = option.attribute
+                attribute_data = attributes_map.setdefault(
+                    attribute.id,
+                    {
+                        "id": attribute.id,
+                        "name": attribute.name,
+                        "slug": attribute.slug,
+                        "type": attribute.type,
+                        "unit": attribute.unit,
+                        "allow_multiple": attribute.allow_multiple,
+                        "_priority": attribute.priority,
+                        "products_count": attribute_counts.get(
+                            attribute.id,
+                            0,
+                        ),
+                    },
+                )
+                options = attribute_data.setdefault("options", [])
+
+                options.append(
+                    {
+                        "id": option.id,
+                        "value": option.value,
+                        "slug": option.slug,
+                        "_priority": option.priority,
+                        "products_count": 0,
+                    }
+                )
 
         # -------------------------
         # NUMBER

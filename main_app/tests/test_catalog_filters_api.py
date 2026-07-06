@@ -346,6 +346,47 @@ def test_catalog_filters_api_keeps_single_choice_options_filtered():
 
 
 @pytest.mark.django_db
+def test_catalog_filters_api_keeps_unavailable_selected_choice_option():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "choice",
+                        "attribute_id": dataset["attributes"]["fuel"].id,
+                        "option_ids": [dataset["options"]["wood_fuel"].id],
+                    },
+                    {
+                        "type": "number",
+                        "attribute_id": dataset["attributes"]["power"].id,
+                        "gte": "20",
+                        "lte": "30",
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": None,
+        "max": None,
+    }
+
+    fuel = _attribute_by_slug(data["attributes"], "fuel-type")
+    assert fuel["allow_multiple"] is False
+    assert _option_counts(fuel) == {
+        "wood": 0,
+    }
+
+
+@pytest.mark.django_db
 def test_catalog_filters_api_keeps_manufacturers_available():
     client = APIClient()
     dataset = create_catalog_filter_dataset()
@@ -386,6 +427,51 @@ def test_catalog_filters_api_keeps_manufacturers_available():
     ]
     assert manufacturers["aurora"]["products_count"] == 2
     assert manufacturers["bathlab"]["products_count"] == 2
+
+
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_unavailable_selected_manufacturer():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "manufacturer",
+                        "ids": [dataset["manufacturers"]["aurora"].id],
+                    },
+                    {
+                        "type": "number",
+                        "attribute_id": dataset["attributes"]["power"].id,
+                        "gte": "20",
+                        "lte": "30",
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": None,
+        "max": None,
+    }
+
+    manufacturers = {
+        manufacturer["slug"]: manufacturer
+        for manufacturer in data["manufacturers"]
+    }
+    assert list(manufacturers) == [
+        "bathlab",
+        "aurora",
+    ]
+    assert manufacturers["bathlab"]["products_count"] == 1
+    assert manufacturers["aurora"]["products_count"] == 0
 
 
 @pytest.mark.django_db
