@@ -345,6 +345,84 @@ def test_catalog_filters_api_keeps_single_choice_options_filtered():
     }
 
 
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_manufacturers_available():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "section",
+                        "ids": [dataset["sections"]["stoves"].id],
+                    },
+                    {
+                        "type": "manufacturer",
+                        "ids": [dataset["manufacturers"]["aurora"].id],
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": 99000,
+        "max": 129000,
+    }
+
+    manufacturers = {
+        manufacturer["slug"]: manufacturer
+        for manufacturer in data["manufacturers"]
+    }
+    assert list(manufacturers) == [
+        "bathlab",
+        "aurora",
+    ]
+    assert manufacturers["aurora"]["products_count"] == 2
+    assert manufacturers["bathlab"]["products_count"] == 2
+
+
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_number_range_available():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "number",
+                        "attribute_id": dataset["attributes"]["steam_volume"].id,
+                        "gte": "12",
+                        "lte": "24",
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": 69000,
+        "max": 129000,
+    }
+
+    steam_volume = _attribute_by_slug(data["attributes"], "steam-volume")
+    assert steam_volume["products_count"] == 4
+    assert steam_volume["min"] == 12.0
+    assert steam_volume["max"] == 30.0
+
+
 @pytest.mark.parametrize(
     "raw_filters",
     [

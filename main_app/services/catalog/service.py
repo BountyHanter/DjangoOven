@@ -558,6 +558,69 @@ class CatalogService:
         ]
 
     @staticmethod
+    def _selected_number_attribute_ids(filters: list[dict]):
+        number_attribute_ids = []
+
+        for f in filters:
+            if f.get("type") != "number":
+                continue
+
+            attribute_id = CatalogService._normalize_id(
+                f.get("attribute_id"),
+            )
+            has_range = f.get("gte") is not None or f.get("lte") is not None
+
+            if attribute_id and has_range:
+                number_attribute_ids.append(attribute_id)
+
+        if not number_attribute_ids:
+            return set()
+
+        return set(
+            ProductAttribute.objects.filter(
+                id__in=number_attribute_ids,
+                type=ProductAttribute.AttributeType.NUMBER,
+                hide_in_filter=False,
+            ).values_list("id", flat=True)
+        )
+
+    @staticmethod
+    def _filters_without_number_attribute(filters: list[dict], attribute_id: int):
+        return [
+            f
+            for f in filters
+            if not (
+                f.get("type") == "number"
+                and CatalogService._normalize_id(
+                    f.get("attribute_id"),
+                ) == attribute_id
+            )
+        ]
+
+    @staticmethod
+    def _has_selected_manufacturer_filter(filters: list[dict]):
+        for f in filters:
+            if f.get("type") != "manufacturer":
+                continue
+
+            manufacturer_ids = CatalogService._normalize_id_list(
+                f.get("ids") or [],
+            )
+
+            if manufacturer_ids:
+                return True
+
+        return False
+
+    @staticmethod
+    def _filters_without_manufacturer(filters: list[dict]):
+        return [
+            f
+            for f in filters
+            if f.get("type") != "manufacturer"
+        ]
+
+    @staticmethod
     def apply_search(qs, search: str | None = None):
         if not search:
             return qs
@@ -848,8 +911,15 @@ class CatalogService:
         # -------------------------
         # MANUFACTURERS
         # -------------------------
+        manufacturer_products_qs = products_qs
+
+        if CatalogService._has_selected_manufacturer_filter(filters):
+            manufacturer_products_qs = CatalogService.apply_filters(
+                CatalogService._filters_without_manufacturer(filters),
+            )
+
         manufacturers_qs = (
-            products_qs
+            manufacturer_products_qs
             .filter(
                 manufacturer__isnull=False,
                 manufacturer__is_active=True,
@@ -1012,12 +1082,29 @@ class CatalogService:
         # -------------------------
         # NUMBER
         # -------------------------
-        number_rows = (
-            attribute_values_qs
-            .filter(
-                attribute__type="number",
-                value_number__isnull=False,
+        selected_number_attribute_ids = (
+            CatalogService._selected_number_attribute_ids(filters)
+        )
+
+        def apply_number_row(row):
+            attribute_data = get_attribute_data(row)
+
+            attribute_data["min"] = row["min"]
+            attribute_data["max"] = row["max"]
+            attribute_data["products_count"] = row["products_count"]
+
+        number_values_qs = attribute_values_qs.filter(
+            attribute__type=ProductAttribute.AttributeType.NUMBER,
+            value_number__isnull=False,
+        )
+
+        if selected_number_attribute_ids:
+            number_values_qs = number_values_qs.exclude(
+                attribute_id__in=selected_number_attribute_ids,
             )
+
+        number_rows = (
+            number_values_qs
             .values(*attribute_fields)
             .annotate(
                 min=Min("value_number"),
@@ -1028,11 +1115,39 @@ class CatalogService:
         )
 
         for row in number_rows:
-            attribute_data = get_attribute_data(row)
+            apply_number_row(row)
 
-            attribute_data["min"] = row["min"]
-            attribute_data["max"] = row["max"]
-            attribute_data["products_count"] = row["products_count"]
+        for attribute_id in selected_number_attribute_ids:
+            facet_filters = CatalogService._filters_without_number_attribute(
+                filters,
+                attribute_id,
+            )
+            facet_product_ids = (
+                CatalogService.apply_filters(facet_filters)
+                .order_by()
+                .values("id")
+            )
+
+            facet_number_rows = (
+                ProductAttributeValue.objects
+                .filter(
+                    product_id__in=facet_product_ids,
+                    attribute_id=attribute_id,
+                    attribute__hide_in_filter=False,
+                    attribute__type=ProductAttribute.AttributeType.NUMBER,
+                    value_number__isnull=False,
+                )
+                .values(*attribute_fields)
+                .annotate(
+                    min=Min("value_number"),
+                    max=Max("value_number"),
+                    products_count=Count("product_id", distinct=True),
+                )
+                .order_by("attribute_id")
+            )
+
+            for row in facet_number_rows:
+                apply_number_row(row)
 
         # -------------------------
         # BOOLEAN
