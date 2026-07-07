@@ -4,6 +4,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from main_app.models import Product, ProductAttribute, ProductAttributeValue
 from main_app.tests.catalog_filter_data import create_catalog_filter_dataset
 
 
@@ -507,6 +508,51 @@ def test_catalog_filters_api_keeps_number_range_available():
     assert steam_volume["products_count"] == 4
     assert steam_volume["min"] == 12.0
     assert steam_volume["max"] == 30.0
+
+
+@pytest.mark.django_db
+def test_catalog_filters_api_hides_number_attribute_without_range():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+    zero_weight = ProductAttribute.objects.create(
+        name="Масса камней",
+        slug="stone-weight",
+        type=ProductAttribute.AttributeType.NUMBER,
+        unit="кг",
+    )
+    bathlab_electric = Product.objects.get(name="BathLab Electro 10")
+    ProductAttributeValue.objects.create(
+        product=bathlab_electric,
+        attribute=zero_weight,
+        value_number="0.00",
+    )
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "manufacturer",
+                        "ids": [dataset["manufacturers"]["bathlab"].id],
+                    },
+                    {
+                        "type": "choice",
+                        "attribute_id": dataset["attributes"]["fuel"].id,
+                        "option_ids": [dataset["options"]["electric_fuel"].id],
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    attribute_slugs = [
+        attribute["slug"]
+        for attribute in response.json()["attributes"]
+    ]
+    assert "stone-weight" not in attribute_slugs
 
 
 @pytest.mark.parametrize(

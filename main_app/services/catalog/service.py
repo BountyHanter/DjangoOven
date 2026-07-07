@@ -1326,7 +1326,18 @@ class CatalogService:
             )
 
         attributes = CatalogService._sort_filter_attributes(
-            attributes_map.values(),
+            [
+                attribute
+                for attribute in attributes_map.values()
+                if (
+                    attribute["type"] != ProductAttribute.AttributeType.NUMBER
+                    or (
+                        attribute.get("min") is not None
+                        and attribute.get("max") is not None
+                        and attribute["min"] != attribute["max"]
+                    )
+                )
+            ],
         )
 
         result = {
