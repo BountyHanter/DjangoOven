@@ -232,6 +232,19 @@ def product_detail_data():
         value_number="24.00",
     )
 
+    heated_volume_attribute = ProductAttribute.objects.create(
+        name="Объем отопления",
+        slug="heated-volume",
+        type=ProductAttribute.AttributeType.RANGE,
+        unit="м3",
+    )
+    ProductAttributeValue.objects.create(
+        product=product,
+        attribute=heated_volume_attribute,
+        value_number_from="90.00",
+        value_number_to="160.00",
+    )
+
     water_circuit_attribute = ProductAttribute.objects.create(
         name="Водяной контур",
         slug="water-circuit",
@@ -368,6 +381,7 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
         "finish-materials",
         "fuel-type",
         "glass-lift",
+        "heated-volume",
         "installation-note",
         "power-kw",
         "steam-volume",
@@ -406,6 +420,14 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     steam_volume = _attribute_by_slug(attributes, "steam-volume")
     assert steam_volume["unit"] == "м3"
     assert steam_volume["value"] == "24.00"
+
+    heated_volume = _attribute_by_slug(attributes, "heated-volume")
+    assert heated_volume["type"] == ProductAttribute.AttributeType.RANGE
+    assert heated_volume["unit"] == "м3"
+    assert heated_volume["value"] == {
+        "from": "90.00",
+        "to": "160.00",
+    }
 
     water_circuit = _attribute_by_slug(attributes, "water-circuit")
     assert water_circuit["type"] == ProductAttribute.AttributeType.BOOLEAN

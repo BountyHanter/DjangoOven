@@ -16,6 +16,7 @@ class ProductAttribute(models.Model):
         CHOICE = "choice", "Выбор из списка"
         BOOLEAN = "boolean", "Да/Нет"
         NUMBER = "number", "Число"
+        RANGE = "range", "Диапазон чисел"
         TEXT = "text", "Текст"
 
     name = models.CharField(
@@ -224,6 +225,22 @@ class ProductAttributeValue(models.Model):
         verbose_name="Числовое значение",
     )
 
+    value_number_from = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Числовое значение от",
+    )
+
+    value_number_to = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Числовое значение до",
+    )
+
     value_bool = models.BooleanField(
         null=True,
         blank=True,
@@ -247,6 +264,8 @@ class ProductAttributeValue(models.Model):
             models.Index(fields=["product", "attribute"]),
             models.Index(fields=["attribute", "option"]),
             models.Index(fields=["value_number"]),
+            models.Index(fields=["value_number_from"]),
+            models.Index(fields=["value_number_to"]),
             models.Index(fields=["value_bool"]),
         ]
         constraints = [

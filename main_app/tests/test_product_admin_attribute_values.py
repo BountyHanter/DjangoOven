@@ -94,6 +94,33 @@ def test_product_admin_attribute_meta_returns_empty_options_for_scalar_attribute
 
 
 @pytest.mark.django_db
+def test_product_admin_attribute_meta_returns_range_type(
+    client,
+    admin_user,
+):
+    client.force_login(admin_user)
+    attribute = ProductAttribute.objects.create(
+        name="Объем отопления",
+        type=ProductAttribute.AttributeType.RANGE,
+        unit="м3",
+    )
+
+    response = client.get(
+        reverse(
+            "admin:main_app_product_attribute_meta",
+            args=[attribute.id],
+        )
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": attribute.id,
+        "type": ProductAttribute.AttributeType.RANGE,
+        "options": [],
+    }
+
+
+@pytest.mark.django_db
 def test_product_attribute_value_inline_form_filters_options_by_attribute():
     attribute = ProductAttribute.objects.create(
         name="Материал",

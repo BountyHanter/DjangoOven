@@ -169,6 +169,15 @@ class ProductDetailService:
 
             return str(item.value_number)
 
+        if attribute_type == "range":
+            if item.value_number_from is None or item.value_number_to is None:
+                return None
+
+            return {
+                "from": str(item.value_number_from),
+                "to": str(item.value_number_to),
+            }
+
         if attribute_type in ("bool", "boolean"):
             if item.value_bool is None:
                 return None

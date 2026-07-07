@@ -223,6 +223,8 @@ class ProductAttributeValueAdmin(admin.ModelAdmin):
         "display_value",
         "option",
         "value_number",
+        "value_number_from",
+        "value_number_to",
         "value_bool",
     )
 
@@ -252,6 +254,8 @@ class ProductAttributeValueAdmin(admin.ModelAdmin):
         "option",
         "value_text",
         "value_number",
+        "value_number_from",
+        "value_number_to",
         "value_bool",
         "created_at",
         "updated_at",

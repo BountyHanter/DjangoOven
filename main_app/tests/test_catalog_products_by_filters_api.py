@@ -202,6 +202,37 @@ def test_catalog_products_api_searches_by_product_name():
     ] == ["Aurora Compact 14"]
 
 
+@pytest.mark.django_db
+def test_catalog_products_api_filters_by_range_attribute_intersection():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = _request_products(
+        client,
+        [
+            {
+                "type": "range",
+                "attribute_id": dataset["attributes"]["heating_volume"].id,
+                "gte": "100",
+                "lte": "130",
+            },
+        ],
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["count"] == 3
+    assert [
+        item["name"]
+        for item in data["results"]
+    ] == [
+        "Aurora Pro 18 Duo",
+        "BathLab Gas 22",
+        "Aurora Compact 14",
+    ]
+
+
 @pytest.mark.parametrize(
     "raw_filters",
     [

@@ -4,15 +4,18 @@
     const VALUE_FIELDS = [
         "option",
         "value_number",
+        "value_number_from",
+        "value_number_to",
         "value_bool",
         "value_text",
     ];
     const TYPE_FIELD_MAP = {
-        choice: "option",
-        number: "value_number",
-        boolean: "value_bool",
-        bool: "value_bool",
-        text: "value_text",
+        choice: ["option"],
+        number: ["value_number"],
+        range: ["value_number_from", "value_number_to"],
+        boolean: ["value_bool"],
+        bool: ["value_bool"],
+        text: ["value_text"],
     };
     const META_CACHE = new Map();
     const HIDDEN_CLASS = "product-attribute-value-field-hidden";
@@ -186,17 +189,19 @@
             return;
         }
 
-        const visibleField = TYPE_FIELD_MAP[meta.type];
+        const visibleFields = TYPE_FIELD_MAP[meta.type] || [];
 
-        if (!visibleField) {
+        if (!visibleFields.length) {
             return;
         }
 
-        if (visibleField === "option") {
+        if (visibleFields.includes("option")) {
             fillOptionSelect(row, meta.options || [], shouldClear);
         }
 
-        setFieldVisible(row, visibleField, true);
+        visibleFields.forEach((fieldName) => {
+            setFieldVisible(row, fieldName, true);
+        });
     }
 
     function initRow(row) {

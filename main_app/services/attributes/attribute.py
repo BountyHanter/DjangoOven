@@ -131,6 +131,29 @@ def get_attribute_value_display(attribute_value):
     if attribute_value.option_id:
         return attribute_value.option.value
 
+    if (
+        attribute_value.value_number_from is not None
+        or attribute_value.value_number_to is not None
+    ):
+        unit = ""
+
+        if attribute_value.attribute_id and attribute_value.attribute.unit:
+            unit = f" {attribute_value.attribute.unit}"
+
+        if (
+            attribute_value.value_number_from is not None
+            and attribute_value.value_number_to is not None
+        ):
+            return (
+                f"{attribute_value.value_number_from} - "
+                f"{attribute_value.value_number_to}{unit}"
+            )
+
+        if attribute_value.value_number_from is not None:
+            return f"от {attribute_value.value_number_from}{unit}"
+
+        return f"до {attribute_value.value_number_to}{unit}"
+
     if attribute_value.value_number is not None:
         if attribute_value.attribute_id and attribute_value.attribute.unit:
             return f"{attribute_value.value_number} {attribute_value.attribute.unit}"
@@ -207,8 +230,40 @@ def _validate_value_by_attribute_type(attribute_value, attribute_type, errors):
         "option": attribute_value.option_id is not None,
         "value_text": bool((attribute_value.value_text or "").strip()),
         "value_number": attribute_value.value_number is not None,
+        "value_number_from": attribute_value.value_number_from is not None,
+        "value_number_to": attribute_value.value_number_to is not None,
         "value_bool": attribute_value.value_bool is not None,
     }
+
+    if attribute_type == ProductAttribute.AttributeType.RANGE:
+        if not values["value_number_from"]:
+            errors["value_number_from"] = (
+                "Для характеристики-диапазона нужно указать значение от"
+            )
+
+        if not values["value_number_to"]:
+            errors["value_number_to"] = (
+                "Для характеристики-диапазона нужно указать значение до"
+            )
+
+        if (
+            values["value_number_from"]
+            and values["value_number_to"]
+            and attribute_value.value_number_from > attribute_value.value_number_to
+        ):
+            errors["value_number_to"] = (
+                "Значение до не может быть меньше значения от"
+            )
+
+        for field, has_value in values.items():
+            if field not in ("value_number_from", "value_number_to") and has_value:
+                errors[field] = (
+                    "Для характеристики-диапазона используются только "
+                    "значения от и до"
+                )
+
+        return
+
     rules = {
         ProductAttribute.AttributeType.CHOICE: (
             "option",

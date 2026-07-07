@@ -26,6 +26,15 @@ def _add_number(product, attribute, value):
     )
 
 
+def _add_range(product, attribute, value_from, value_to):
+    return ProductAttributeValue.objects.create(
+        product=product,
+        attribute=attribute,
+        value_number_from=value_from,
+        value_number_to=value_to,
+    )
+
+
 def _add_bool(product, attribute, value):
     return ProductAttributeValue.objects.create(
         product=product,
@@ -128,6 +137,13 @@ def create_catalog_filter_dataset():
         type=ProductAttribute.AttributeType.NUMBER,
         unit="м3",
     )
+    heating_volume = ProductAttribute.objects.create(
+        name="Объем отопления",
+        slug="heating-volume",
+        type=ProductAttribute.AttributeType.RANGE,
+        unit="м3",
+        priority=5,
+    )
     water_circuit = ProductAttribute.objects.create(
         name="Водяной контур",
         slug="water-circuit",
@@ -223,6 +239,7 @@ def create_catalog_filter_dataset():
     _add_choice(aurora_pro, finish, soapstone)
     _add_number(aurora_pro, power, "18.50")
     _add_number(aurora_pro, steam_volume, "24.00")
+    _add_range(aurora_pro, heating_volume, "90.00", "160.00")
     _add_bool(aurora_pro, water_circuit, True)
     _add_bool(aurora_pro, glass_lift, False)
     _add_bool(aurora_pro, long_fire, True)
@@ -249,6 +266,7 @@ def create_catalog_filter_dataset():
     _add_choice(aurora_compact, finish, steel)
     _add_number(aurora_compact, power, "14.00")
     _add_number(aurora_compact, steam_volume, "18.00")
+    _add_range(aurora_compact, heating_volume, "70.00", "120.00")
     _add_bool(aurora_compact, water_circuit, True)
     _add_bool(aurora_compact, glass_lift, False)
     _add_bool(aurora_compact, long_fire, False)
@@ -275,6 +293,7 @@ def create_catalog_filter_dataset():
     _add_choice(bathlab_electric, finish, ceramic)
     _add_number(bathlab_electric, power, "10.00")
     _add_number(bathlab_electric, steam_volume, "12.00")
+    _add_range(bathlab_electric, heating_volume, "40.00", "90.00")
     _add_bool(bathlab_electric, water_circuit, False)
     _add_bool(bathlab_electric, glass_lift, True)
     _add_bool(bathlab_electric, long_fire, False)
@@ -307,6 +326,7 @@ def create_catalog_filter_dataset():
     _add_choice(bathlab_gas, finish, cast_iron)
     _add_number(bathlab_gas, power, "22.00")
     _add_number(bathlab_gas, steam_volume, "30.00")
+    _add_range(bathlab_gas, heating_volume, "120.00", "220.00")
     _add_bool(bathlab_gas, water_circuit, False)
     _add_bool(bathlab_gas, glass_lift, True)
     _add_bool(bathlab_gas, long_fire, True)
@@ -357,6 +377,7 @@ def create_catalog_filter_dataset():
             "finish": finish,
             "power": power,
             "steam_volume": steam_volume,
+            "heating_volume": heating_volume,
             "water_circuit": water_circuit,
             "glass_lift": glass_lift,
             "long_fire": long_fire,

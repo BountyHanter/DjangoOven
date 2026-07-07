@@ -44,6 +44,8 @@ class ProductAttributeValueInline(admin.StackedInline):
         "attribute",
         "option",
         "value_number",
+        "value_number_from",
+        "value_number_to",
         "value_bool",
         "value_text",
     )

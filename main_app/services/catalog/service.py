@@ -432,6 +432,43 @@ class CatalogService:
                 )
 
             # -------------------------
+            # RANGE
+            # -------------------------
+            elif f_type == "range":
+                if not attribute_id:
+                    if raw_attribute_id:
+                        return qs.none()
+                    continue
+
+                raw_gte = f.get("gte")
+                raw_lte = f.get("lte")
+                gte = CatalogService._normalize_number(raw_gte)
+                lte = CatalogService._normalize_number(raw_lte)
+
+                if raw_gte is not None and gte is None:
+                    return qs.none()
+
+                if raw_lte is not None and lte is None:
+                    return qs.none()
+
+                range_filter = {
+                    "value_number_from__isnull": False,
+                    "value_number_to__isnull": False,
+                }
+
+                if gte is not None:
+                    range_filter["value_number_to__gte"] = gte
+
+                if lte is not None:
+                    range_filter["value_number_from__lte"] = lte
+
+                qs = CatalogService._filter_by_attribute_exists(
+                    qs,
+                    attribute_id,
+                    **range_filter,
+                )
+
+            # -------------------------
             # BOOLEAN
             # -------------------------
             elif f_type in CatalogService.BOOLEAN_TYPES:
@@ -620,6 +657,46 @@ class CatalogService:
             for f in filters
             if not (
                 f.get("type") == "number"
+                and CatalogService._normalize_id(
+                    f.get("attribute_id"),
+                ) == attribute_id
+            )
+        ]
+
+    @staticmethod
+    def _selected_range_attribute_ids(filters: list[dict]):
+        range_attribute_ids = []
+
+        for f in filters:
+            if f.get("type") != "range":
+                continue
+
+            attribute_id = CatalogService._normalize_id(
+                f.get("attribute_id"),
+            )
+            has_range = f.get("gte") is not None or f.get("lte") is not None
+
+            if attribute_id and has_range:
+                range_attribute_ids.append(attribute_id)
+
+        if not range_attribute_ids:
+            return set()
+
+        return set(
+            ProductAttribute.objects.filter(
+                id__in=range_attribute_ids,
+                type=ProductAttribute.AttributeType.RANGE,
+                hide_in_filter=False,
+            ).values_list("id", flat=True)
+        )
+
+    @staticmethod
+    def _filters_without_range_attribute(filters: list[dict], attribute_id: int):
+        return [
+            f
+            for f in filters
+            if not (
+                f.get("type") == "range"
                 and CatalogService._normalize_id(
                     f.get("attribute_id"),
                 ) == attribute_id
@@ -1298,6 +1375,78 @@ class CatalogService:
                 apply_number_row(row)
 
         # -------------------------
+        # RANGE
+        # -------------------------
+        selected_range_attribute_ids = (
+            CatalogService._selected_range_attribute_ids(filters)
+        )
+
+        def apply_range_row(row):
+            attribute_data = get_attribute_data(row)
+
+            attribute_data["min"] = row["min"]
+            attribute_data["max"] = row["max"]
+            attribute_data["products_count"] = row["products_count"]
+
+        range_values_qs = attribute_values_qs.filter(
+            attribute__type=ProductAttribute.AttributeType.RANGE,
+            value_number_from__isnull=False,
+            value_number_to__isnull=False,
+        )
+
+        if selected_range_attribute_ids:
+            range_values_qs = range_values_qs.exclude(
+                attribute_id__in=selected_range_attribute_ids,
+            )
+
+        range_rows = (
+            range_values_qs
+            .values(*attribute_fields)
+            .annotate(
+                min=Min("value_number_from"),
+                max=Max("value_number_to"),
+                products_count=Count("product_id", distinct=True),
+            )
+            .order_by("attribute_id")
+        )
+
+        for row in range_rows:
+            apply_range_row(row)
+
+        for attribute_id in selected_range_attribute_ids:
+            facet_filters = CatalogService._filters_without_range_attribute(
+                filters,
+                attribute_id,
+            )
+            facet_product_ids = (
+                CatalogService.apply_filters(facet_filters)
+                .order_by()
+                .values("id")
+            )
+
+            facet_range_rows = (
+                ProductAttributeValue.objects
+                .filter(
+                    product_id__in=facet_product_ids,
+                    attribute_id=attribute_id,
+                    attribute__hide_in_filter=False,
+                    attribute__type=ProductAttribute.AttributeType.RANGE,
+                    value_number_from__isnull=False,
+                    value_number_to__isnull=False,
+                )
+                .values(*attribute_fields)
+                .annotate(
+                    min=Min("value_number_from"),
+                    max=Max("value_number_to"),
+                    products_count=Count("product_id", distinct=True),
+                )
+                .order_by("attribute_id")
+            )
+
+            for row in facet_range_rows:
+                apply_range_row(row)
+
+        # -------------------------
         # BOOLEAN
         # -------------------------
         bool_rows = (
@@ -1330,7 +1479,11 @@ class CatalogService:
                 attribute
                 for attribute in attributes_map.values()
                 if (
-                    attribute["type"] != ProductAttribute.AttributeType.NUMBER
+                    attribute["type"]
+                    not in (
+                        ProductAttribute.AttributeType.NUMBER,
+                        ProductAttribute.AttributeType.RANGE,
+                    )
                     or (
                         attribute.get("min") is not None
                         and attribute.get("max") is not None

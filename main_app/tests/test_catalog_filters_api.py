@@ -109,6 +109,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "fuel-type",
         "moshchnost",
         "water-circuit",
+        "heating-volume",
         "steam-volume",
         "glass-lift",
     ]
@@ -116,6 +117,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "finish-material",
         "fuel-type",
         "glass-lift",
+        "heating-volume",
         "moshchnost",
         "steam-volume",
         "water-circuit",
@@ -165,6 +167,13 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert steam_volume["products_count"] == 4
     assert steam_volume["min"] == 12.0
     assert steam_volume["max"] == 30.0
+
+    heating_volume = _attribute_by_slug(attributes, "heating-volume")
+    assert heating_volume["type"] == "range"
+    assert heating_volume["unit"] == "м3"
+    assert heating_volume["products_count"] == 4
+    assert heating_volume["min"] == 40.0
+    assert heating_volume["max"] == 220.0
 
     water_circuit = _attribute_by_slug(attributes, "water-circuit")
     assert water_circuit["type"] == "boolean"
@@ -258,6 +267,14 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert filtered_power["products_count"] == 2
     assert filtered_power["min"] == 14.0
     assert filtered_power["max"] == 18.5
+
+    filtered_heating_volume = _attribute_by_slug(
+        filtered_attributes,
+        "heating-volume",
+    )
+    assert filtered_heating_volume["products_count"] == 2
+    assert filtered_heating_volume["min"] == 70.0
+    assert filtered_heating_volume["max"] == 160.0
 
     filtered_water_circuit = _attribute_by_slug(
         filtered_attributes,
@@ -508,6 +525,42 @@ def test_catalog_filters_api_keeps_number_range_available():
     assert steam_volume["products_count"] == 4
     assert steam_volume["min"] == 12.0
     assert steam_volume["max"] == 30.0
+
+
+@pytest.mark.django_db
+def test_catalog_filters_api_keeps_range_attribute_available():
+    client = APIClient()
+    dataset = create_catalog_filter_dataset()
+
+    response = client.get(
+        reverse("catalog-filters"),
+        {
+            "filters": json.dumps(
+                [
+                    {
+                        "type": "range",
+                        "attribute_id": dataset["attributes"]["heating_volume"].id,
+                        "gte": "100",
+                        "lte": "130",
+                    },
+                ]
+            )
+        },
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["price"] == {
+        "min": 99000,
+        "max": 210000,
+    }
+
+    heating_volume = _attribute_by_slug(data["attributes"], "heating-volume")
+    assert heating_volume["type"] == "range"
+    assert heating_volume["products_count"] == 4
+    assert heating_volume["min"] == 40.0
+    assert heating_volume["max"] == 220.0
 
 
 @pytest.mark.django_db
