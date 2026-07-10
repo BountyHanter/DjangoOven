@@ -69,6 +69,7 @@ def create_catalog_filter_dataset():
         description="Полное описание каталога",
         meta_description="SEO описание каталога",
         meta_keywords="каталог, печи",
+        yandex_category_id="90401",
     )
     stoves = Section.objects.create(
         name="Печи",
@@ -81,6 +82,7 @@ def create_catalog_filter_dataset():
         description="Полное описание раздела печей",
         meta_description="SEO описание печей",
         meta_keywords="печи",
+        yandex_category_id="90402",
     )
     wood = Section.objects.create(
         name="Дровяные печи",
@@ -167,6 +169,7 @@ def create_catalog_filter_dataset():
         value="Дрова",
         slug="wood",
         priority=2,
+        yandex_category_id="90403",
     )
     electric_fuel = ProductAttributeOption.objects.create(
         attribute=fuel,
@@ -178,6 +181,7 @@ def create_catalog_filter_dataset():
         value="Газ",
         slug="gas",
         priority=1,
+        yandex_category_id="90404",
     )
 
     steel = ProductAttributeOption.objects.create(
@@ -185,6 +189,7 @@ def create_catalog_filter_dataset():
         value="Сталь",
         slug="steel",
         priority=2,
+        yandex_category_id="90405",
     )
     soapstone = ProductAttributeOption.objects.create(
         attribute=finish,

@@ -20,6 +20,7 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             "is_new",
             "is_bestseller",
             "priority",
+            "in_stock",
             "has_video",
             "price",
             "discount_price",

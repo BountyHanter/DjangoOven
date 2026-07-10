@@ -104,6 +104,7 @@ class ProductAttributeOptionInline(admin.TabularInline):
         "value",
         "slug",
         "priority",
+        "yandex_category_id",
         "is_active",
     )
 
@@ -176,6 +177,7 @@ class ProductAttributeOptionAdmin(admin.ModelAdmin):
         "attribute",
         "slug",
         "priority",
+        "yandex_category_id",
         "is_active",
     )
 

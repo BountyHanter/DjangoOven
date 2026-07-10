@@ -45,6 +45,12 @@ class Section(models.Model):
         verbose_name="Название для меню",
     )
 
+    yandex_category_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="ID рубрики Яндекс",
+    )
+
     browser_title = models.CharField(
         max_length=255,
         blank=True,

@@ -116,6 +116,7 @@ def test_catalog_products_api_filters_by_sections_attributes_and_price():
     assert aurora_pro["is_new"] is True
     assert aurora_pro["is_bestseller"] is True
     assert aurora_pro["priority"] == 1
+    assert aurora_pro["in_stock"] is True
     assert aurora_pro["has_video"] is True
     assert aurora_pro["power"] == {
         "name": "Мощность",
@@ -141,6 +142,7 @@ def test_catalog_products_api_filters_by_sections_attributes_and_price():
     assert aurora_compact["is_new"] is False
     assert aurora_compact["is_bestseller"] is False
     assert aurora_compact["priority"] == 3
+    assert aurora_compact["in_stock"] is True
     assert aurora_compact["has_video"] is False
     assert aurora_compact["power"] == {
         "name": "Мощность",

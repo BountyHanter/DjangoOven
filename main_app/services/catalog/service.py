@@ -827,6 +827,7 @@ class CatalogService:
                 "slug",
                 "parent",
                 "description_main",
+                "yandex_category_id",
                 "image",
                 "browser_title",
                 "description",
@@ -866,6 +867,7 @@ class CatalogService:
                 "name": section.name,
                 "slug": section.slug,
                 "description_main": section.description_main,
+                "yandex_category_id": section.yandex_category_id,
                 "image": section.image.url if section.image else None,
                 "browser_title": section.browser_title,
                 "description": section.description,
@@ -1180,6 +1182,7 @@ class CatalogService:
                         "id": row["option_id"],
                         "value": row["option__value"],
                         "slug": row["option__slug"],
+                        "yandex_category_id": row["option__yandex_category_id"],
                         "_priority": row["option__priority"],
                         "products_count": row["products_count"],
                     }
@@ -1203,6 +1206,7 @@ class CatalogService:
                 "option_id",
                 "option__value",
                 "option__slug",
+                "option__yandex_category_id",
                 "option__priority",
             )
             .annotate(products_count=Count("product_id", distinct=True))
@@ -1237,6 +1241,7 @@ class CatalogService:
                     "option_id",
                     "option__value",
                     "option__slug",
+                    "option__yandex_category_id",
                     "option__priority",
                 )
                 .annotate(products_count=Count("product_id", distinct=True))
@@ -1299,6 +1304,7 @@ class CatalogService:
                         "id": option.id,
                         "value": option.value,
                         "slug": option.slug,
+                        "yandex_category_id": option.yandex_category_id,
                         "_priority": option.priority,
                         "products_count": 0,
                     }

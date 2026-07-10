@@ -84,6 +84,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert "products_count" not in root
     assert root["count"] == 5
     assert root["description_main"] == "Главный раздел каталога"
+    assert root["yandex_category_id"] == "90401"
     assert root["image"] == "/media/sections/catalog-root.webp"
     assert root["browser_title"] == "Каталог печей"
     assert root["description"] == "Полное описание каталога"
@@ -92,6 +93,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert root["ordering"] == 1
     assert stoves["count"] == 4
     assert stoves["description_main"] == "Раздел с печами"
+    assert stoves["yandex_category_id"] == "90402"
     assert stoves["image"] == "/media/sections/stoves.webp"
     assert stoves["browser_title"] == "Печи"
     assert stoves["description"] == "Полное описание раздела печей"
@@ -99,6 +101,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert stoves["meta_keywords"] == "печи"
     assert stoves["ordering"] == 1
     assert wood["count"] == 2
+    assert wood["yandex_category_id"] == ""
     assert electric["count"] == 1
     assert gas["count"] == 1
     assert accessories["count"] == 2
@@ -132,6 +135,14 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "wood",
         "electric",
     ]
+    assert {
+        option["slug"]: option["yandex_category_id"]
+        for option in fuel["options"]
+    } == {
+        "electric": "",
+        "gas": "90404",
+        "wood": "90403",
+    }
     assert _option_counts(fuel) == {
         "electric": 1,
         "gas": 1,
@@ -148,6 +159,15 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "ceramic",
         "cast-iron",
     ]
+    assert {
+        option["slug"]: option["yandex_category_id"]
+        for option in finish["options"]
+    } == {
+        "cast-iron": "",
+        "ceramic": "",
+        "soapstone": "",
+        "steel": "90405",
+    }
     assert _option_counts(finish) == {
         "cast-iron": 1,
         "ceramic": 1,

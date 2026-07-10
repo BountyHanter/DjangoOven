@@ -31,6 +31,7 @@ class SectionAdmin(admin.ModelAdmin):
                     "image",
                     "image_preview",
                     "menu_name",
+                    "yandex_category_id",
                     "description",
                     "ordering",
                     "is_active",

@@ -132,6 +132,12 @@ class ProductAttributeOption(models.Model):
         help_text="0 — без ручного приоритета; положительные значения не должны повторяться внутри характеристики",
     )
 
+    yandex_category_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="ID рубрики Яндекс",
+    )
+
     class Meta:
         verbose_name = "Вариант характеристики"
         verbose_name_plural = "Значение характеристик"
