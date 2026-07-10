@@ -15,6 +15,7 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "name",
+            "description",
             "sections",
             "manufacturer",
             "is_new",
