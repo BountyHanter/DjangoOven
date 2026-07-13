@@ -168,6 +168,10 @@ def create_catalog_filter_dataset():
         attribute=fuel,
         value="Дрова",
         slug="wood",
+        title="Дровяные печи",
+        description="Описание дровяных печей",
+        h1="Купить дровяную печь",
+        do_not_use_for_direct_url=True,
         priority=2,
         yandex_category_id="90403",
     )

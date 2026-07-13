@@ -143,6 +143,22 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "gas": "90404",
         "wood": "90403",
     }
+    wood_option = next(
+        option for option in fuel["options"] if option["slug"] == "wood"
+    )
+    assert wood_option["title"] == "Дровяные печи"
+    assert wood_option["description"] == "Описание дровяных печей"
+    assert wood_option["h1"] == "Купить дровяную печь"
+    assert wood_option["do_not_use_for_direct_url"] is True
+
+    electric_option = next(
+        option for option in fuel["options"] if option["slug"] == "electric"
+    )
+    assert electric_option["title"] == ""
+    assert electric_option["description"] == ""
+    assert electric_option["h1"] == ""
+    assert electric_option["do_not_use_for_direct_url"] is False
+
     assert _option_counts(fuel) == {
         "electric": 1,
         "gas": 1,

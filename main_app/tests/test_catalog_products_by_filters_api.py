@@ -110,6 +110,9 @@ def test_catalog_products_api_filters_by_sections_attributes_and_price():
     assert "Aurora Hidden Prototype" not in names
 
     aurora_pro = results[0]
+    assert aurora_pro["description"] == (
+        "Дровяная печь с большой каменкой и выносной топкой."
+    )
     assert aurora_pro["manufacturer"] == "Aurora"
     assert aurora_pro["price"] == 162000
     assert aurora_pro["discount_price"] == 129000
@@ -136,6 +139,9 @@ def test_catalog_products_api_filters_by_sections_attributes_and_price():
     assert "is_main" not in aurora_pro["images"][1]
 
     aurora_compact = results[1]
+    assert aurora_compact["description"] == (
+        "Компактная дровяная печь для небольшой парной."
+    )
     assert aurora_compact["manufacturer"] == "Aurora"
     assert aurora_compact["price"] == 99000
     assert aurora_compact["discount_price"] is None

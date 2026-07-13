@@ -114,6 +114,28 @@ class ProductAttributeOption(models.Model):
         verbose_name="Значение",
     )
 
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Тайтл",
+    )
+
+    description = models.TextField(
+        blank=True,
+        verbose_name="Дискрипшен",
+    )
+
+    h1 = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="H1",
+    )
+
+    do_not_use_for_direct_url = models.BooleanField(
+        default=False,
+        verbose_name="Не использовать для прямой ссылки",
+    )
+
     slug = models.SlugField(
         max_length=255,
         db_index=True,

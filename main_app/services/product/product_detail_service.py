@@ -161,6 +161,10 @@ class ProductDetailService:
                 "id": item.option.id,
                 "name": item.option.value,
                 "slug": item.option.slug,
+                "title": item.option.title,
+                "description": item.option.description,
+                "h1": item.option.h1,
+                "do_not_use_for_direct_url": item.option.do_not_use_for_direct_url,
             }
 
         if attribute_type == "number":
