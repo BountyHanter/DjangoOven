@@ -49,6 +49,16 @@ class ProductAttribute(models.Model):
         verbose_name="Не выводить в фильтр",
     )
 
+    do_not_use_for_direct_url = models.BooleanField(
+        default=False,
+        verbose_name="Не использовать для прямой ссылки",
+    )
+
+    is_expanded = models.BooleanField(
+        default=False,
+        verbose_name="Развёрнутый",
+    )
+
     priority = models.PositiveIntegerField(
         default=0,
         verbose_name="Приоритет",

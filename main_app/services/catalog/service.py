@@ -1126,6 +1126,8 @@ class CatalogService:
             "attribute__type",
             "attribute__unit",
             "attribute__allow_multiple",
+            "attribute__do_not_use_for_direct_url",
+            "attribute__is_expanded",
             "attribute__priority",
         )
 
@@ -1150,6 +1152,8 @@ class CatalogService:
                     "type": row["attribute__type"],
                     "unit": row["attribute__unit"],
                     "allow_multiple": row["attribute__allow_multiple"],
+                    "do_not_use_for_direct_url": row["attribute__do_not_use_for_direct_url"],
+                    "is_expanded": row["attribute__is_expanded"],
                     "_priority": row["attribute__priority"],
                     "products_count": attribute_counts.get(
                         row["attribute_id"],
@@ -1302,6 +1306,8 @@ class CatalogService:
                         "type": attribute.type,
                         "unit": attribute.unit,
                         "allow_multiple": attribute.allow_multiple,
+                        "do_not_use_for_direct_url": attribute.do_not_use_for_direct_url,
+                        "is_expanded": attribute.is_expanded,
                         "_priority": attribute.priority,
                         "products_count": attribute_counts.get(
                             attribute.id,

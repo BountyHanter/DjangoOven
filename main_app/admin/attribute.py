@@ -128,6 +128,8 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "priority",
         "allow_multiple",
         "hide_in_filter",
+        "do_not_use_for_direct_url",
+        "is_expanded",
         "unit",
         "options_count",
     )
@@ -136,6 +138,8 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "type",
         "allow_multiple",
         "hide_in_filter",
+        "do_not_use_for_direct_url",
+        "is_expanded",
     )
 
     ordering = (
@@ -156,6 +160,8 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "priority",
         "allow_multiple",
         "hide_in_filter",
+        "do_not_use_for_direct_url",
+        "is_expanded",
         "unit",
     )
 
