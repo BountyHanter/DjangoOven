@@ -1,9 +1,20 @@
+from django import forms
 from django.contrib import admin
+from django.db import models
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.urls import path
 from django.utils.html import format_html
 
-from main_app.admin.forms.product import ProductAdminForm, ProductDocumentInlineForm
+from main_app.admin.forms.product import (
+    ProductAdminForm,
+    ProductAttributeValueInlineForm,
+    ProductDocumentInlineForm,
+)
+from main_app.models.attribute import ProductAttribute, ProductAttributeValue
 from main_app.models.parser import ParserResult
 from main_app.models.product import Product, ProductImage, ProductDocument, ProductVideo
+
 
 class ParserResultInline(admin.StackedInline):
     model = ParserResult
@@ -22,6 +33,45 @@ class ParserResultInline(admin.StackedInline):
         "processing_time",
         "error_text",
     )
+
+
+class ProductAttributeValueInline(admin.StackedInline):
+    model = ProductAttributeValue
+    form = ProductAttributeValueInlineForm
+    extra = 1
+
+    fields = (
+        "attribute",
+        "option",
+        "value_number",
+        "value_number_from",
+        "value_number_to",
+        "value_bool",
+        "value_text",
+    )
+
+    autocomplete_fields = (
+        "attribute",
+    )
+
+    formfield_overrides = {
+        models.TextField: {
+            "widget": forms.Textarea(attrs={
+                "rows": 3,
+                "cols": 40,
+                "style": "width: 400px; resize: vertical;"
+            })
+        }
+    }
+
+    show_change_link = True
+
+    class Media:
+        js = ("admin/js/product_attribute_values.js",)
+        css = {
+            "all": ("admin/css/product_attribute_values.css",)
+        }
+
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
@@ -52,7 +102,7 @@ class ProductDocumentInline(admin.TabularInline):
 class ProductVideoInline(admin.TabularInline):
     model = ProductVideo
     extra = 1
-    fields = ("url", "ordering")
+    fields = ("url", "preview", "ordering")
     ordering = ("ordering",)
 
 
@@ -62,6 +112,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     inlines = [
         ParserResultInline,
+        ProductAttributeValueInline,
         ProductImageInline,
         ProductVideoInline,
         ProductDocumentInline,
@@ -69,40 +120,30 @@ class ProductAdmin(admin.ModelAdmin):
 
     filter_horizontal = ("sections",)
 
+    readonly_fields = ("id", "slug")
+
     search_fields = (
+        "id",
         "name",
         "sku",
         "series",
+        "manufacturer__name",
     )
 
     list_display = (
         "name",
         "manufacturer",
-        "fuel_type",
         "price",
         "discount_price",
         "in_stock",
         "is_active",
+        "is_new",
+        "is_bestseller",
     )
 
     list_filter = (
         "sections",
         "manufacturer",
-        "fuel_type",
-        "heated_volume",
-        "power_kw",
-        "firebox_material",
-        "firebox_type",
-        "installation_type",
-        "heater_type",
-        "door_mechanism",
-        "fire_view",
-        "glass_count",
-        "heat_exchanger",
-        "glass_lift",
-        "water_circuit",
-        "damper",
-        "cooking_panel",
         "free_delivery",
         "in_stock",
         "is_active",
@@ -111,21 +152,20 @@ class ProductAdmin(admin.ModelAdmin):
     )
 
     fieldsets = (
-
         (
             "Основная информация",
             {
                 "fields": (
+                    "id",
                     "name",
+                    "slug",
                     "manufacturer",
                     "sections",
                     "description",
-                    "video_preview",
                     "schema",
                 )
             },
         ),
-
         (
             "Цены",
             {
@@ -135,7 +175,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Статусы",
             {
@@ -148,48 +187,16 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
-            "Параметры и характеристики",
+            "Идентификаторы",
             {
                 "fields": (
                     "priority",
                     "sku",
                     "series",
-                    "fuel_type",
-                    "heated_volume",
-                    ("steam_volume_from", "steam_volume_to"),
-                    "power_kw",
-                    "lining_material",
-                    "firebox_material",
-                    "firebox_type",
-                    "installation_type",
-                    "heater_type",
-                    "stone_material",
-                    "tank_type",
-                    "door_mechanism",
-                    "fire_view",
-                    "glass_count",
-                    "chimney_diameter",
-                    "chimney_connection",
-                    "closed_heater_volume",
-                    "warranty_years",
-                    "efficiency",
-                    "dimensions",
-                    "weight",
-                    "oven_weight",
-                    "stone_weight",
-                    "long_fire",
-                    "heat_exchanger",
-                    "glass_lift",
-                    "water_circuit",
-                    "damper",
-                    "cooking_panel",
-                    "oven",
                 )
             },
         ),
-
         (
             "SEO",
             {
@@ -200,7 +207,6 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Загрузить множество изображений",
             {
@@ -209,8 +215,46 @@ class ProductAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
     )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "attribute-meta/<int:attribute_id>/",
+                self.admin_site.admin_view(self.attribute_meta_view),
+                name="main_app_product_attribute_meta",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def attribute_meta_view(self, request, attribute_id):
+        attribute = get_object_or_404(ProductAttribute, pk=attribute_id)
+        options = []
+
+        if attribute.type == ProductAttribute.AttributeType.CHOICE:
+            options = [
+                {
+                    "id": option.id,
+                    "value": option.value,
+                }
+                for option in attribute.options.annotate(
+                    priority_sort_group=models.Case(
+                        models.When(priority=0, then=models.Value(1)),
+                        default=models.Value(0),
+                        output_field=models.IntegerField(),
+                    )
+                ).order_by("priority_sort_group", "priority", "id")
+            ]
+
+        return JsonResponse(
+            {
+                "id": attribute.id,
+                "type": attribute.type,
+                "options": options,
+            }
+        )
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

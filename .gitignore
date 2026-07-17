@@ -56,3 +56,8 @@ staticfiles/*
 # но сохраняем .gitkeep, чтобы папки были в репозитории
 !static/.gitkeep
 !media/.gitkeep
+*.sql
+
+export_product_attributes_fixture.py
+product_attributes_fixture.json
+*.dump

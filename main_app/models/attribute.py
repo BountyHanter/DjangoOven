@@ -1,0 +1,342 @@
+from django.db import models
+from django.db.models import Q
+
+from main_app.services.attributes.attribute import (
+    generate_attribute_option_slug,
+    generate_attribute_slug,
+    get_attribute_value_display,
+    validate_attribute,
+    validate_attribute_option,
+    validate_attribute_value,
+)
+
+
+class ProductAttribute(models.Model):
+    class AttributeType(models.TextChoices):
+        CHOICE = "choice", "Выбор из списка"
+        BOOLEAN = "boolean", "Да/Нет"
+        NUMBER = "number", "Число"
+        RANGE = "range", "Диапазон чисел"
+        TEXT = "text", "Текст"
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name="Название характеристики",
+    )
+
+    slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        blank=True,
+        verbose_name="Slug",
+    )
+
+    type = models.CharField(
+        max_length=32,
+        choices=AttributeType.choices,
+        verbose_name="Тип характеристики",
+    )
+
+    allow_multiple = models.BooleanField(
+        default=False,
+        verbose_name="Можно несколько значений",
+        help_text="Имеет смысл в первую очередь для характеристик типа 'Выбор из списка'",
+    )
+
+    hide_in_filter = models.BooleanField(
+        default=False,
+        verbose_name="Не выводить в фильтр",
+    )
+
+    do_not_use_for_direct_url = models.BooleanField(
+        default=False,
+        verbose_name="Не использовать для прямой ссылки",
+    )
+
+    is_expanded = models.BooleanField(
+        default=False,
+        verbose_name="Развёрнутый",
+    )
+
+    priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Приоритет",
+        help_text="0 — без ручного приоритета; положительные значения не должны повторяться",
+    )
+
+    unit = models.CharField(
+        max_length=32,
+        blank=True,
+        verbose_name="Единица измерения",
+        help_text="Например: кг, кВт, м³, мм",
+    )
+
+    min_price = models.PositiveIntegerField(null=True, blank=True, verbose_name="Минимальная цена")
+
+    class Meta:
+        verbose_name = "Характеристика товара"
+        verbose_name_plural = "Характеристики"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["type"]),
+            models.Index(fields=["priority"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["priority"],
+                condition=Q(priority__gt=0),
+                name="unique_positive_attribute_priority",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        validate_attribute(self)
+
+    def _generate_unique_slug(self):
+        return generate_attribute_slug(self)
+
+    def save(self, *args, **kwargs):
+        if (
+            not self.slug
+            or ProductAttribute.objects.filter(slug=self.slug)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            self.slug = self._generate_unique_slug()
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class ProductAttributeOption(models.Model):
+    attribute = models.ForeignKey(
+        ProductAttribute,
+        on_delete=models.CASCADE,
+        related_name="options",
+        verbose_name="Характеристика",
+    )
+
+    value = models.CharField(
+        max_length=255,
+        verbose_name="Значение",
+    )
+
+    title = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Тайтл",
+    )
+
+    description = models.TextField(
+        blank=True,
+        verbose_name="Дискрипшен",
+    )
+
+    h1 = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="H1",
+    )
+
+    do_not_use_for_direct_url = models.BooleanField(
+        default=False,
+        verbose_name="Не использовать для прямой ссылки",
+    )
+
+    slug = models.SlugField(
+        max_length=255,
+        db_index=True,
+        blank=True,
+        verbose_name="Slug",
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Активно",
+    )
+
+    priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Приоритет",
+        help_text="0 — без ручного приоритета; положительные значения не должны повторяться внутри характеристики",
+    )
+
+    yandex_category_id = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="ID рубрики Яндекс",
+    )
+
+    min_price = models.PositiveIntegerField(null=True, blank=True, verbose_name="Минимальная цена")
+
+    class Meta:
+        verbose_name = "Вариант характеристики"
+        verbose_name_plural = "Значение характеристик"
+        ordering = ["attribute__name", "value"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["attribute", "slug"],
+                name="unique_attribute_option_slug",
+            ),
+            models.UniqueConstraint(
+                fields=["attribute", "value"],
+                name="unique_attribute_option_value",
+            ),
+            models.UniqueConstraint(
+                fields=["attribute", "priority"],
+                condition=Q(priority__gt=0),
+                name="unique_positive_attribute_option_priority",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["priority"]),
+        ]
+
+    def __str__(self):
+        if self.attribute_id:
+            return f"{self.attribute.name}: {self.value}"
+        return self.value
+
+    def clean(self):
+        validate_attribute_option(self)
+
+    def _generate_unique_slug(self):
+        return generate_attribute_option_slug(self)
+
+    def save(self, *args, **kwargs):
+        duplicate_slug_exists = False
+
+        if self.slug and self.attribute_id:
+            duplicate_slug_exists = (
+                ProductAttributeOption.objects.filter(
+                    attribute_id=self.attribute_id,
+                    slug=self.slug,
+                )
+                .exclude(pk=self.pk)
+                .exists()
+            )
+
+        if not self.slug or duplicate_slug_exists:
+            self.slug = self._generate_unique_slug()
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+class ProductAttributeValue(models.Model):
+    product = models.ForeignKey(
+        "Product",
+        on_delete=models.CASCADE,
+        related_name="attribute_values",
+        verbose_name="Товар",
+    )
+
+    attribute = models.ForeignKey(
+        ProductAttribute,
+        on_delete=models.CASCADE,
+        related_name="product_values",
+        verbose_name="Характеристика",
+    )
+
+    option = models.ForeignKey(
+        ProductAttributeOption,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="product_values",
+        verbose_name="Вариант значения",
+    )
+
+    value_text = models.TextField(
+        blank=True,
+        verbose_name="Текстовое значение",
+    )
+
+    value_number = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Числовое значение",
+    )
+
+    value_number_from = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Числовое значение от",
+    )
+
+    value_number_to = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Числовое значение до",
+    )
+
+    value_bool = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="Да/Нет",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Создано",
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Обновлено",
+    )
+
+    class Meta:
+        verbose_name = "Значение характеристики товара"
+        verbose_name_plural = "Выбранные характеристики"
+        indexes = [
+            models.Index(fields=["product", "attribute"]),
+            models.Index(fields=["attribute", "option"]),
+            models.Index(fields=["value_number"]),
+            models.Index(fields=["value_number_from"]),
+            models.Index(fields=["value_number_to"]),
+            models.Index(fields=["value_bool"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "attribute", "option"],
+                condition=Q(option__isnull=False),
+                name="unique_product_attribute_option",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "attribute"],
+                condition=Q(option__isnull=True),
+                name="unique_product_attribute_scalar_value",
+            ),
+        ]
+
+    def __str__(self):
+        product_name = self.product.name if self.product_id else "Товар"
+        attribute_name = (
+            self.attribute.name if self.attribute_id else "характеристика"
+        )
+        return f"{product_name} — {attribute_name}: {self.display_value}"
+
+    @property
+    def display_value(self):
+        return get_attribute_value_display(self)
+
+    def clean(self):
+        validate_attribute_value(self)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

@@ -2,6 +2,7 @@ from django.db import models
 
 from main_app.models.manufacturer import Manufacturer
 from main_app.models.product import Product
+from main_app.services.slug import build_unique_slug
 
 
 class Collection(models.Model):
@@ -74,3 +75,14 @@ class Collection(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        slug_value = self.slug or self.name
+
+        if (
+            not self.slug
+            or Collection.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+        ):
+            self.slug = build_unique_slug(self, slug_value, "collection")
+
+        super().save(*args, **kwargs)

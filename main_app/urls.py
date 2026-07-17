@@ -8,7 +8,7 @@ from main_app.views.product_detail import ProductDetailAPIView
 from main_app.views.product_preview import ProductCatalogAPIView
 from main_app.views.product_video import ProductVideoListAPIView
 from main_app.views.review import ReviewListView
-from main_app.views.section import CatalogFiltersAPIView
+from main_app.views.filters import CatalogFiltersAPIView
 
 catalog_patterns = [
     path("filters/", CatalogFiltersAPIView.as_view(), name="catalog-filters"),

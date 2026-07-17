@@ -1,49 +1,39 @@
 from rest_framework import serializers
 
-from main_app.models import Product, ProductImage, Manufacturer, Section
-
-
-class ManufacturerPreviewSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Manufacturer
-        fields = (
-            "name",
-        )
-
-class ProductImageSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = ProductImage
-        fields = (
-            "image",
-            "is_main",
-            "ordering",
-        )
+from main_app.models import Product, Section
 
 
 class ProductPreviewSerializer(serializers.ModelSerializer):
-    manufacturer = ManufacturerPreviewSerializer(read_only=True)
-    images = ProductImageSerializer(many=True, read_only=True)
-    has_video = serializers.BooleanField(read_only=True)
+    manufacturer = serializers.SerializerMethodField()
     sections = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    has_video = serializers.BooleanField(read_only=True)
+    power = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = (
             "id",
             "name",
+            "description",
             "sections",
             "manufacturer",
             "is_new",
             "is_bestseller",
             "priority",
+            "in_stock",
             "has_video",
             "price",
             "discount_price",
-            "power_kw",
+            "power",
             "images",
         )
+
+    def get_manufacturer(self, obj):
+        if not obj.manufacturer:
+            return None
+
+        return obj.manufacturer.name
 
     def _build_section_path_cache(self):
         if hasattr(self, "_section_path_cache"):
@@ -64,7 +54,6 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
         sections_by_id = {}
         pending_ids = set(section_ids)
 
-        # Грузим дерево предков батчами, чтобы не вызывать запрос на каждый parent.
         while pending_ids:
             rows = Section.objects.filter(id__in=pending_ids).values(
                 "id",
@@ -93,9 +82,10 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
             while node_id:
                 if node_id in visited_ids:
                     break
-                visited_ids.add(node_id)
 
+                visited_ids.add(node_id)
                 node = sections_by_id.get(node_id)
+
                 if node is None:
                     break
 
@@ -124,16 +114,56 @@ class ProductPreviewSerializer(serializers.ModelSerializer):
                 result.append(path)
                 continue
 
-            # Fallback на случай рассинхронизации данных.
             result.append(
                 [
                     {
-                        "id": s.id,
-                        "name": s.name,
-                        "slug": s.slug,
+                        "id": item.id,
+                        "name": item.name,
+                        "slug": item.slug,
                     }
-                    for s in section.get_path()
+                    for item in section.get_path()
                 ]
             )
 
         return result
+
+    def get_images(self, obj):
+        images = getattr(obj, "preview_images", None)
+
+        if images is None:
+            images = obj.images.all()
+
+        result = []
+
+        for image in images:
+            item = {
+                "id": image.id,
+                "image": image.image.url if image.image else None,
+                "ordering": image.ordering,
+            }
+
+            if image.is_main:
+                item["is_main"] = True
+
+            result.append(item)
+
+        return result
+
+    def get_power(self, obj):
+        value = getattr(obj, "power_value", None)
+
+        if value is None:
+            return None
+
+        data = {
+            "name": getattr(obj, "power_name", None) or "Мощность",
+            "slug": "moshchnost",
+            "value": str(value),
+        }
+
+        unit = getattr(obj, "power_unit", None)
+
+        if unit:
+            data["unit"] = unit
+
+        return data
