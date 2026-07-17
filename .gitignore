@@ -60,3 +60,4 @@ staticfiles/*
 
 export_product_attributes_fixture.py
 product_attributes_fixture.json
+*.dump
