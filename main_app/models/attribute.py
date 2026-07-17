@@ -72,6 +72,8 @@ class ProductAttribute(models.Model):
         help_text="Например: кг, кВт, м³, мм",
     )
 
+    min_price = models.PositiveIntegerField(null=True, blank=True, verbose_name="Минимальная цена")
+
     class Meta:
         verbose_name = "Характеристика товара"
         verbose_name_plural = "Характеристики"
@@ -169,6 +171,8 @@ class ProductAttributeOption(models.Model):
         blank=True,
         verbose_name="ID рубрики Яндекс",
     )
+
+    min_price = models.PositiveIntegerField(null=True, blank=True, verbose_name="Минимальная цена")
 
     class Meta:
         verbose_name = "Вариант характеристики"

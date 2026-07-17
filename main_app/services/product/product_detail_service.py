@@ -133,6 +133,7 @@ class ProductDetailService:
                     "name": attribute.name,
                     "slug": attribute.slug,
                     "type": attribute.type,
+                    "min_price": attribute.min_price,
                     "value": [] if attribute.allow_multiple else value,
                 }
 
@@ -165,6 +166,7 @@ class ProductDetailService:
                 "description": item.option.description,
                 "h1": item.option.h1,
                 "do_not_use_for_direct_url": item.option.do_not_use_for_direct_url,
+                "min_price": item.option.min_price,
             }
 
         if attribute_type == "number":

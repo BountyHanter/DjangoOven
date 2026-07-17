@@ -110,6 +110,7 @@ class ProductAttributeOptionInline(admin.TabularInline):
         "priority",
         "yandex_category_id",
         "is_active",
+        "min_price",
     )
 
     readonly_fields = (
@@ -131,6 +132,7 @@ class ProductAttributeAdmin(admin.ModelAdmin):
         "do_not_use_for_direct_url",
         "is_expanded",
         "unit",
+        "min_price",
         "options_count",
     )
 
@@ -223,6 +225,7 @@ class ProductAttributeOptionAdmin(admin.ModelAdmin):
         "slug",
         "priority",
         "is_active",
+        "min_price",
     )
 
     readonly_fields = (

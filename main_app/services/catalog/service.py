@@ -1129,6 +1129,7 @@ class CatalogService:
             "attribute__do_not_use_for_direct_url",
             "attribute__is_expanded",
             "attribute__priority",
+            "attribute__min_price",
         )
 
         attribute_counts = {
@@ -1150,6 +1151,7 @@ class CatalogService:
                     "name": row["attribute__name"],
                     "slug": row["attribute__slug"],
                     "type": row["attribute__type"],
+                    "min_price": row["attribute__min_price"],
                     "unit": row["attribute__unit"],
                     "allow_multiple": row["attribute__allow_multiple"],
                     "do_not_use_for_direct_url": row["attribute__do_not_use_for_direct_url"],
@@ -1191,6 +1193,7 @@ class CatalogService:
                         "h1": row["option__h1"],
                         "do_not_use_for_direct_url": row["option__do_not_use_for_direct_url"],
                         "yandex_category_id": row["option__yandex_category_id"],
+                        "min_price": row["option__min_price"],
                         "_priority": row["option__priority"],
                         "products_count": row["products_count"],
                     }
@@ -1219,6 +1222,7 @@ class CatalogService:
                 "option__h1",
                 "option__do_not_use_for_direct_url",
                 "option__yandex_category_id",
+                "option__min_price",
                 "option__priority",
             )
             .annotate(products_count=Count("product_id", distinct=True))
@@ -1258,6 +1262,7 @@ class CatalogService:
                     "option__h1",
                     "option__do_not_use_for_direct_url",
                     "option__yandex_category_id",
+                    "option__min_price",
                     "option__priority",
                 )
                 .annotate(products_count=Count("product_id", distinct=True))
@@ -1327,6 +1332,7 @@ class CatalogService:
                         "h1": option.h1,
                         "do_not_use_for_direct_url": option.do_not_use_for_direct_url,
                         "yandex_category_id": option.yandex_category_id,
+                        "min_price": option.min_price,
                         "_priority": option.priority,
                         "products_count": 0,
                     }
