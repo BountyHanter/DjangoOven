@@ -17,7 +17,7 @@ class SectionTreeSerializer(serializers.ModelSerializer):
             "description_main",
             "image",
             "browser_title",
-            "description",
+            "h1",
             "meta_description",
             "meta_keywords",
             "ordering",

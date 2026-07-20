@@ -39,12 +39,6 @@ class Section(models.Model):
         verbose_name="Изображение раздела",
     )
 
-    menu_name = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name="Название для меню",
-    )
-
     yandex_category_id = models.CharField(
         max_length=255,
         blank=True,
@@ -57,9 +51,10 @@ class Section(models.Model):
         verbose_name="Заголовок вкладки браузера",
     )
 
-    description = models.TextField(
+    h1 = models.CharField(
+        max_length=255,
         blank=True,
-        verbose_name="Описание",
+        verbose_name="H1 Каталога",
     )
 
     meta_description = models.CharField(

@@ -87,7 +87,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert root["yandex_category_id"] == "90401"
     assert root["image"] == "/media/sections/catalog-root.webp"
     assert root["browser_title"] == "Каталог печей"
-    assert root["description"] == "Полное описание каталога"
+    assert root["h1"] == "Каталог печей"
     assert root["meta_description"] == "SEO описание каталога"
     assert root["meta_keywords"] == "каталог, печи"
     assert root["ordering"] == 1
@@ -96,7 +96,7 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
     assert stoves["yandex_category_id"] == "90402"
     assert stoves["image"] == "/media/sections/stoves.webp"
     assert stoves["browser_title"] == "Печи"
-    assert stoves["description"] == "Полное описание раздела печей"
+    assert stoves["h1"] == "Печи"
     assert stoves["meta_description"] == "SEO описание печей"
     assert stoves["meta_keywords"] == "печи"
     assert stoves["ordering"] == 1
@@ -277,12 +277,13 @@ def test_catalog_filters_api_returns_dynamic_filters_and_counts():
         "accessories",
     )
 
-    assert filtered_root["count"] == 2
-    assert filtered_stoves["count"] == 2
+    # Счётчики разделов не зависят от выбранного раздела и других фильтров.
+    assert filtered_root["count"] == 5
+    assert filtered_stoves["count"] == 4
     assert filtered_wood["count"] == 2
-    assert filtered_electric["count"] == 0
-    assert filtered_gas["count"] == 0
-    assert filtered_accessories["count"] == 1
+    assert filtered_electric["count"] == 1
+    assert filtered_gas["count"] == 1
+    assert filtered_accessories["count"] == 2
 
     filtered_attributes = filtered_data["attributes"]
 

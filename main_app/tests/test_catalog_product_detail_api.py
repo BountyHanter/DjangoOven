@@ -45,12 +45,10 @@ def product_detail_data():
     root_section = Section.objects.create(
         name="Каталог",
         slug="catalog-root",
-        menu_name="Каталог",
         ordering=1,
         image="sections/catalog-root.jpg",
         description_main="Основной каталог",
         browser_title="Каталог печей",
-        description="Полное описание корневого раздела",
         meta_description="Разделы каталога",
         meta_keywords="каталог, печи",
     )
@@ -62,7 +60,6 @@ def product_detail_data():
         image="sections/sauna-stoves.jpg",
         description_main="Печи для бани",
         browser_title="Банные печи",
-        description="Печи для разных парных",
         meta_description="Банные печи для каталога",
         meta_keywords="баня, печи",
     )
@@ -74,7 +71,6 @@ def product_detail_data():
         image="sections/wood-fired-stoves.jpg",
         description_main="Дровяные модели",
         browser_title="Дровяные печи",
-        description="Дровяные печи для русской бани",
         meta_description="Дровяные печи",
         meta_keywords="дрова, печь",
     )
@@ -84,7 +80,6 @@ def product_detail_data():
         parent=root_section,
         ordering=4,
         image="sections/accessories.jpg",
-        description="Сопутствующие разделы",
     )
 
     product = Product.objects.create(
@@ -169,6 +164,11 @@ def product_detail_data():
         attribute=fuel_attribute,
         value="Дрова",
         slug="wood",
+        title="Дровяные печи",
+        description="Печи для бани на дровах",
+        h1="Купить дровяную печь",
+        do_not_use_for_direct_url=True,
+        min_price=75000,
     )
     ProductAttributeOption.objects.create(
         attribute=fuel_attribute,
@@ -191,11 +191,20 @@ def product_detail_data():
         attribute=materials_attribute,
         value="Талькохлорит",
         slug="soapstone",
+        title="Печи из талькохлорита",
+        description="Отделка талькохлоритом",
+        h1="Печи с талькохлоритом",
+        min_price=120000,
     )
     steel_option = ProductAttributeOption.objects.create(
         attribute=materials_attribute,
         value="Нержавеющая сталь",
         slug="stainless-steel",
+        title="Печи из нержавеющей стали",
+        description="Отделка нержавеющей сталью",
+        h1="Печи из нержавеющей стали",
+        do_not_use_for_direct_url=True,
+        min_price=90000,
     )
     ProductAttributeValue.objects.create(
         product=product,
@@ -297,6 +306,11 @@ def product_detail_data():
         "product": product,
         "manufacturer": manufacturer,
         "sections": [root_section, sauna_section, wood_section, accessories_section],
+        "options": {
+            "wood": wood_option,
+            "soapstone": soapstone_option,
+            "steel": steel_option,
+        },
     }
 
 
@@ -304,6 +318,7 @@ def product_detail_data():
 def test_product_detail_api_returns_full_current_contract(product_detail_data):
     client = APIClient()
     product = product_detail_data["product"]
+    options = product_detail_data["options"]
 
     url = reverse("catalog-product-detail", kwargs={"id": product.id})
     response = client.get(url)
@@ -392,23 +407,38 @@ def test_product_detail_api_returns_full_current_contract(product_detail_data):
     assert fuel_type["name"] == "Тип топлива"
     assert fuel_type["type"] == ProductAttribute.AttributeType.CHOICE
     assert fuel_type["value"] == {
-        "id": fuel_type["value"]["id"],
+        "id": options["wood"].id,
         "name": "Дрова",
         "slug": "wood",
+        "title": "Дровяные печи",
+        "description": "Печи для бани на дровах",
+        "h1": "Купить дровяную печь",
+        "do_not_use_for_direct_url": True,
+        "min_price": 75000,
     }
 
     finish_materials = _attribute_by_slug(attributes, "finish-materials")
     assert finish_materials["type"] == ProductAttribute.AttributeType.CHOICE
     assert finish_materials["value"] == [
         {
-            "id": finish_materials["value"][0]["id"],
+            "id": options["soapstone"].id,
             "name": "Талькохлорит",
             "slug": "soapstone",
+            "title": "Печи из талькохлорита",
+            "description": "Отделка талькохлоритом",
+            "h1": "Печи с талькохлоритом",
+            "do_not_use_for_direct_url": False,
+            "min_price": 120000,
         },
         {
-            "id": finish_materials["value"][1]["id"],
+            "id": options["steel"].id,
             "name": "Нержавеющая сталь",
             "slug": "stainless-steel",
+            "title": "Печи из нержавеющей стали",
+            "description": "Отделка нержавеющей сталью",
+            "h1": "Печи из нержавеющей стали",
+            "do_not_use_for_direct_url": True,
+            "min_price": 90000,
         },
     ]
 
