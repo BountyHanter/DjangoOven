@@ -1,5 +1,6 @@
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.permissions import AllowAny
+from django.db.models import Count
 
 from main_app.models import Manufacturer
 from main_app.serializers.manufacturer import ManufacturerPreviewSerializer, ManufacturerDetailSerializer
@@ -25,5 +26,9 @@ class ManufacturerPreviewListView(ListAPIView):
 class ManufacturerDetailAPIView(RetrieveAPIView):
     permission_classes = [AllowAny]
     serializer_class = ManufacturerDetailSerializer
-    queryset = Manufacturer.objects.filter(is_active=True)
+    queryset = (
+        Manufacturer.objects
+        .filter(is_active=True)
+        .annotate(product_count=Count("product"))
+    )
     lookup_field = "id"

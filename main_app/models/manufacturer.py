@@ -33,6 +33,12 @@ class Manufacturer(models.Model):
         verbose_name="Название страницы",
     )
 
+    h1 = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="H1 Каталога",
+    )
+
     seo_description = models.TextField(
         blank=True,
         verbose_name="Описание страницы",

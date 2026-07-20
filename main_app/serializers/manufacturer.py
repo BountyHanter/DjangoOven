@@ -30,6 +30,10 @@ class ManufacturerImageSerializer(serializers.ModelSerializer):
 
 class ManufacturerDetailSerializer(serializers.ModelSerializer):
     images = ManufacturerImageSerializer(many=True, read_only=True)
+    count = serializers.IntegerField(
+        source="product_count",
+        read_only=True,
+    )
 
     class Meta:
         model = Manufacturer
@@ -40,9 +44,11 @@ class ManufacturerDetailSerializer(serializers.ModelSerializer):
             "is_active",
             "logo",
             "priority",
+            "count",
 
             # SEO
             "seo_title",
+            "h1",
             "seo_description",
             "seo_keywords",
 

@@ -74,6 +74,7 @@ class ManufacturerAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "seo_title",
+                    "h1",
                     "seo_description",
                     "seo_keywords",
                 )

@@ -15,7 +15,7 @@ class SectionAdmin(admin.ModelAdmin):
     )
 
     list_filter = ("is_active", "parent")
-    search_fields = ("name", "slug", "menu_name")
+    search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
     ordering = ("parent__id", "ordering", "name")
 
@@ -30,9 +30,7 @@ class SectionAdmin(admin.ModelAdmin):
                     "description_main",
                     "image",
                     "image_preview",
-                    "menu_name",
                     "yandex_category_id",
-                    "description",
                     "ordering",
                     "is_active",
                 )
@@ -43,6 +41,7 @@ class SectionAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "browser_title",
+                    "h1",
                     "meta_description",
                     "meta_keywords",
                 )

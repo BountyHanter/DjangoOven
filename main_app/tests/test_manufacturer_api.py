@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
-from main_app.models import Manufacturer
+from main_app.models import Manufacturer, Product
 
 
 @pytest.mark.django_db
@@ -160,7 +160,20 @@ def test_get_manufacturer_detail():
         slug="harvia",
         logo="manufacturers/h.jpg",
         description="Описание бренда",
+        h1="Печи Harvia",
         is_active=True,
+    )
+    Product.objects.create(
+        name="Harvia Active",
+        manufacturer=manufacturer,
+        price=100000,
+        is_active=True,
+    )
+    Product.objects.create(
+        name="Harvia Inactive",
+        manufacturer=manufacturer,
+        price=90000,
+        is_active=False,
     )
 
     url = reverse(
@@ -177,6 +190,8 @@ def test_get_manufacturer_detail():
 
     assert data["id"] == manufacturer.id
     assert data["name"] == "Harvia"
+    assert data["h1"] == "Печи Harvia"
+    assert data["count"] == 2
     assert "description" in data
 
 

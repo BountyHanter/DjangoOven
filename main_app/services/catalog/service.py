@@ -830,7 +830,7 @@ class CatalogService:
                 "yandex_category_id",
                 "image",
                 "browser_title",
-                "description",
+                "h1",
                 "meta_description",
                 "meta_keywords",
                 "ordering",
@@ -870,7 +870,7 @@ class CatalogService:
                 "yandex_category_id": section.yandex_category_id,
                 "image": section.image.url if section.image else None,
                 "browser_title": section.browser_title,
-                "description": section.description,
+                "h1": section.h1,
                 "meta_description": section.meta_description,
                 "meta_keywords": section.meta_keywords,
                 "ordering": section.ordering,
@@ -1002,8 +1002,13 @@ class CatalogService:
 
         # -------------------------
         # SECTIONS TREE
+        #
+        # Счётчики разделов всегда показывают размер полного активного
+        # каталога и не зависят от выбранных фильтров.
         # -------------------------
-        sections = CatalogService.get_sections_tree(products_qs)
+        sections = CatalogService.get_sections_tree(
+            Product.objects.filter(is_active=True),
+        )
 
         # -------------------------
         # PRICE
