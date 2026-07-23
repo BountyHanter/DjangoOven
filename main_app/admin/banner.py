@@ -10,6 +10,7 @@ class BannerAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "title",
+        "priority",
         "manufacturer",
         "image_preview",
         "created_at",
@@ -36,6 +37,7 @@ class BannerAdmin(admin.ModelAdmin):
 
     fields = (
         "title",
+        "priority",
         "manufacturer",
         "sections",
         "link",

@@ -1,6 +1,8 @@
 import json
+from datetime import timedelta
 
 import pytest
+from django.utils import timezone
 from django.urls import reverse
 from rest_framework.test import APIClient
 
@@ -70,3 +72,61 @@ def test_banner_filter_by_section():
     assert "Banner 1" in titles
     assert "Banner global" in titles
     assert "Banner 2" not in titles
+
+
+@pytest.mark.django_db
+def test_banner_api_orders_by_positive_priority_then_default_ordering():
+    client = APIClient()
+    now = timezone.now()
+
+    no_priority_zero = Banner.objects.create(
+        title="No priority zero",
+        image="banners/no-priority-zero.jpg",
+        priority=0,
+    )
+    no_priority_empty = Banner.objects.create(
+        title="No priority empty",
+        image="banners/no-priority-empty.jpg",
+        priority=None,
+    )
+    priority_ten_old = Banner.objects.create(
+        title="Priority ten old",
+        image="banners/priority-ten-old.jpg",
+        priority=10,
+    )
+    priority_ten_new = Banner.objects.create(
+        title="Priority ten new",
+        image="banners/priority-ten-new.jpg",
+        priority=10,
+    )
+    priority_one = Banner.objects.create(
+        title="Priority one",
+        image="banners/priority-one.jpg",
+        priority=1,
+    )
+
+    Banner.objects.filter(pk=no_priority_zero.pk).update(
+        created_at=now - timedelta(days=4)
+    )
+    Banner.objects.filter(pk=no_priority_empty.pk).update(
+        created_at=now - timedelta(days=1)
+    )
+    Banner.objects.filter(pk=priority_ten_old.pk).update(
+        created_at=now - timedelta(days=3)
+    )
+    Banner.objects.filter(pk=priority_ten_new.pk).update(
+        created_at=now - timedelta(days=2)
+    )
+    Banner.objects.filter(pk=priority_one.pk).update(
+        created_at=now)
+
+    response = client.get(reverse("banners"))
+
+    assert response.status_code == 200
+    assert [item["title"] for item in response.json()["results"]] == [
+        "Priority one",
+        "Priority ten new",
+        "Priority ten old",
+        "No priority empty",
+        "No priority zero",
+    ]

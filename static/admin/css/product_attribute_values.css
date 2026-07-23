@@ -32,6 +32,22 @@
     min-width: 160px;
 }
 
+#attribute_values-group .field-attribute .select2-container--admin-autocomplete,
+#attribute_values-group .field-option .select2-container--admin-autocomplete {
+    width: 630px !important;
+    max-width: 100%;
+}
+
+body:has(#attribute_values-group .field-attribute .select2-container--open) .select2-container--admin-autocomplete .select2-dropdown,
+body:has(#attribute_values-group .field-option .select2-container--open) .select2-container--admin-autocomplete .select2-dropdown {
+    min-width: 630px;
+}
+
+body:has(#attribute_values-group .field-attribute .select2-container--open) .select2-container--admin-autocomplete .select2-results > .select2-results__options,
+body:has(#attribute_values-group .field-option .select2-container--open) .select2-container--admin-autocomplete .select2-results > .select2-results__options {
+    max-height: 600px;
+}
+
 #attribute_values-group .inline-related .form-row textarea {
     max-width: 720px;
 }

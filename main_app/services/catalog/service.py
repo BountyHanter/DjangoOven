@@ -749,13 +749,14 @@ class CatalogService:
         Сортировка каталога:
 
         Если ordering не передан, используется сортировка по популярности:
-        1. хит + приоритет
+        1. товар с приоритетом
         2. хит без приоритета
-        3. приоритет без хита
-        4. остальное
+        3. остальное
 
         Внутри приоритетных групп:
         - priority ASC, потому что 1 — самый высокий приоритет
+
+        Флаг хита не влияет на порядок товаров с приоритетом.
 
         Если товары одинаковые по группе/приоритету:
         - created_at DESC
@@ -781,21 +782,14 @@ class CatalogService:
         qs = qs.annotate(
             sort_group=Case(
                 When(
-                    is_bestseller=True,
                     priority__isnull=False,
                     then=Value(1),
                 ),
                 When(
                     is_bestseller=True,
-                    priority__isnull=True,
                     then=Value(2),
                 ),
-                When(
-                    is_bestseller=False,
-                    priority__isnull=False,
-                    then=Value(3),
-                ),
-                default=Value(4),
+                default=Value(3),
                 output_field=IntegerField(),
             )
         )

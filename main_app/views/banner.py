@@ -1,4 +1,4 @@
-from django.db.models import Q
+from django.db.models import Case, F, IntegerField, Q, Value, When
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 
@@ -11,7 +11,22 @@ class BannerListView(ListAPIView):
     serializer_class = BannerSerializer
 
     def get_queryset(self):
-        queryset = Banner.objects.all().order_by("-created_at")
+        queryset = Banner.objects.annotate(
+            priority_sort_group=Case(
+                When(priority__gt=0, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            ),
+            priority_sort_value=Case(
+                When(priority__gt=0, then=F("priority")),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+        ).order_by(
+            "priority_sort_group",
+            "priority_sort_value",
+            "-created_at",
+        )
 
         section_id = self.request.query_params.get("section")
         brand_id = self.request.query_params.get("brand")

@@ -38,6 +38,14 @@ class Banner(models.Model):
         help_text="Если выбран — баннер показывается только в бренде",
     )
 
+    priority = models.PositiveIntegerField(
+        default=0,
+        null=True,
+        blank=True,
+        verbose_name="Приоритет",
+        help_text="1 — самый высокий; чем больше число, тем ниже. 0 или пустое значение — без приоритета.",
+    )
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Создан",

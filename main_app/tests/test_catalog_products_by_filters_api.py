@@ -269,7 +269,7 @@ def test_catalog_products_api_returns_400_for_invalid_filters(raw_filters):
 
 
 @pytest.mark.django_db
-def test_catalog_products_api_orders_by_bestseller_priority_and_created_at():
+def test_catalog_products_api_orders_by_priority_then_bestseller_and_created_at():
     client = APIClient()
     now = timezone.now()
 
@@ -296,6 +296,27 @@ def test_catalog_products_api_orders_by_bestseller_priority_and_created_at():
         price=10000,
         is_active=True,
         priority=5,
+    )
+
+    priority_ten_bestseller_older = Product.objects.create(
+        name="Priority ten bestseller older",
+        price=10000,
+        is_active=True,
+        is_bestseller=True,
+        priority=10,
+    )
+    Product.objects.filter(pk=priority_ten_bestseller_older.pk).update(
+        created_at=now - timedelta(days=2),
+    )
+
+    priority_ten_regular_newer = Product.objects.create(
+        name="Priority ten regular newer",
+        price=10000,
+        is_active=True,
+        priority=10,
+    )
+    Product.objects.filter(pk=priority_ten_regular_newer.pk).update(
+        created_at=now - timedelta(days=1),
     )
 
     Product.objects.create(
@@ -333,8 +354,10 @@ def test_catalog_products_api_orders_by_bestseller_priority_and_created_at():
     assert names == [
         "Bestseller priority 1",
         "Bestseller priority 2",
-        "Bestseller no priority",
         "Priority only",
+        "Priority ten regular newer",
+        "Priority ten bestseller older",
+        "Bestseller no priority",
         "Regular newer",
         "Regular older",
     ]

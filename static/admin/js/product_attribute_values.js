@@ -59,6 +59,26 @@
         return container.querySelector("select, input, textarea");
     }
 
+    function initOptionSelect(row) {
+        const djangoJQuery = window.django && window.django.jQuery;
+        const select = getFieldInput(row, "option");
+
+        if (!djangoJQuery || !select || !djangoJQuery.fn.select2) {
+            return;
+        }
+
+        const optionSelect = djangoJQuery(select);
+
+        if (optionSelect.hasClass("select2-hidden-accessible")) {
+            return;
+        }
+
+        optionSelect.select2({
+            theme: "admin-autocomplete",
+            width: "style",
+        });
+    }
+
     function setFieldVisible(row, fieldName, visible) {
         const container = getFieldContainer(row, fieldName);
 
@@ -127,6 +147,12 @@
 
         if (previousValue && select.value !== previousValue) {
             select.value = "";
+        }
+
+        const djangoJQuery = window.django && window.django.jQuery;
+
+        if (djangoJQuery) {
+            djangoJQuery(select).trigger("change.select2");
         }
     }
 
@@ -210,6 +236,7 @@
         }
 
         row.dataset.productAttributeValuesInitialized = "true";
+        initOptionSelect(row);
         updateRow(row, false);
     }
 
