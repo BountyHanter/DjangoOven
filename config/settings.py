@@ -350,6 +350,18 @@ LOGGING = {
             'backupCount': 14,       # храним 14 дней логов
             'encoding': 'utf-8',
         },
+
+        # Логи команды парсера храним отдельно от общих логов приложения.
+        'parser_file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'level': 'INFO',
+            'formatter': 'default',
+            'filename': os.path.join(LOG_DIR, 'parser.log'),
+            'when': 'midnight',
+            'interval': 1,
+            'backupCount': 14,
+            'encoding': 'utf-8',
+        },
     },
 
     # ==============================
@@ -367,6 +379,12 @@ LOGGING = {
         'django.request': {
             'handlers': ['console', 'file'],
             'level': 'ERROR',
+            'propagate': False,
+        },
+
+        'main_app.management.commands.parser': {
+            'handlers': ['console', 'parser_file'],
+            'level': 'INFO',
             'propagate': False,
         },
 

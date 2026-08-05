@@ -1,5 +1,6 @@
-import time
+import logging
 import random
+import time
 from collections import defaultdict, deque
 from urllib.parse import urlparse
 
@@ -10,6 +11,9 @@ from main_app.management.commands.utils.parser.apply_result import apply_parser_
 from main_app.management.commands.utils.parser.runner_test import fetch_html_playwright, fetch_html
 from main_app.models.parser import ParserResult
 from main_app.management.commands.utils.parser.config import PLAYWRIGHT_DOMAINS
+
+
+logger = logging.getLogger(__name__)
 
 
 # -----------------------------
@@ -81,7 +85,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         parser_queue = get_parser_queue()
 
-        self.stdout.write(f"Всего URL: {len(parser_queue)}")
+        logger.info("Запуск парсера. Всего URL: %s", len(parser_queue))
 
         for i, obj in enumerate(parser_queue, start=1):
             url = obj.url
@@ -89,26 +93,45 @@ class Command(BaseCommand):
 
             fetcher = get_fetcher(url)
 
-            self.stdout.write("=" * 80)
-            self.stdout.write(f"[{i}] Обработка: {url}")
-            self.stdout.write(f"Домен: {domain}")
-            self.stdout.write(f"Фетчер: {fetcher.__name__}")
+            logger.info(
+                "[%s/%s] Обработка URL=%s domain=%s fetcher=%s",
+                i,
+                len(parser_queue),
+                url,
+                domain,
+                fetcher.__name__,
+            )
 
             result = fetcher(url)
 
-            self.stdout.write(f"Статус: {result.status_code}")
-
             if result.data:
-                self.stdout.write(f"Данные: {result.data}")
+                logger.info(
+                    "[%s/%s] Результат status=%s data=%s",
+                    i,
+                    len(parser_queue),
+                    result.status_code,
+                    result.data,
+                )
             else:
-                self.stdout.write(f"Ошибка: {result.error_text}")
+                logger.warning(
+                    "[%s/%s] Нет данных status=%s error=%s",
+                    i,
+                    len(parser_queue),
+                    result.status_code,
+                    result.error_text,
+                )
 
             try:
                 apply_parser_result(obj, result)
-                self.stdout.write("Сохранено в БД")
+                logger.info("[%s/%s] Результат сохранён в БД", i, len(parser_queue))
 
             except Exception as e:
-                self.stdout.write(self.style.ERROR(f"Ошибка сохранения: {e}"))
+                logger.exception(
+                    "[%s/%s] Ошибка сохранения результата для URL=%s",
+                    i,
+                    len(parser_queue),
+                    url,
+                )
 
                 # фиксируем в БД что была ошибка
                 obj.status = ParserResult.Status.SERVER_ERROR
@@ -117,6 +140,8 @@ class Command(BaseCommand):
                 obj.save(update_fields=["status", "error_text", "processing_time"])
 
             delay = get_delay()
-            self.stdout.write(f"Пауза: {delay:.2f} сек")
+            logger.info("[%s/%s] Пауза %.2f сек", i, len(parser_queue), delay)
 
             time.sleep(delay)
+
+        logger.info("Парсер завершил работу. Обработано URL: %s", len(parser_queue))
