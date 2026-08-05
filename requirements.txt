@@ -9,3 +9,9 @@ django-cors-headers
 gunicorn
 psycopg2-binary
 python-slugify
+
+beautifulsoup4
+lxml
+httpx
+playwright
+pillow
