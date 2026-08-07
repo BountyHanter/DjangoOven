@@ -123,9 +123,9 @@ def fetch_html_playwright(url: str) -> FetchResult:
         )
 
 if __name__ == "__main__":
-    print("Обычная цена")
-    result = fetch_html("https://astov.ru/pechikaminy/seriya-alisa/alisa-800/")
-    print(result)
+    # print("Обычная цена")
+    # result = fetch_html("https://astov.ru/pechikaminy/seriya-alisa/alisa-800/")
+    # print(result)
     # time.sleep(4)
     # print("Обычная цена")
     # result = fetch_html("https://www.technolit.ru/production/pechi-dlya-bani/pechi-iskander/iskander-zk-25-p2-pro-uragan/")
@@ -249,4 +249,12 @@ if __name__ == "__main__":
     # time.sleep(4)
     #
     # result = fetch_html("https://gk-kovcheg.ru/catalog/fireway/pechnoe-lite-pr/pr-02-dvercza-podduvalnaya.html")
+    # print(result)
+
+    print("Обычная цена")
+    result = fetch_html_playwright("https://prometall.ru/pech-bannaya-atmosfera-l-setka-prutok")
+    print(result)
+    # time.sleep(4)
+    # print("цена со скидкой")
+    # result = fetch_html("https://www.ecokamin.ru/catalog/kaminy/myunkhen/14732/")
     # print(result)
