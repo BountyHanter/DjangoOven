@@ -1,9 +1,10 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from playwright.sync_api import expect, sync_playwright
 
 from main_app.admin.forms.product import ProductAttributeValueInlineForm
-from main_app.models import ProductAttribute, ProductAttributeOption
+from main_app.models import Product, ProductAttribute, ProductAttributeOption
 
 
 @pytest.fixture
@@ -147,3 +148,77 @@ def test_product_attribute_value_inline_form_filters_options_by_attribute():
     )
 
     assert list(form.fields["option"].queryset) == [steel]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_product_admin_loads_options_in_dynamically_added_attribute_row(
+    live_server,
+    admin_user,
+    settings,
+):
+    settings.SESSION_COOKIE_SECURE = False
+    settings.CSRF_COOKIE_SECURE = False
+
+    product = Product.objects.create(
+        name="Тестовая печь",
+        price=100_000,
+    )
+    attribute = ProductAttribute.objects.create(
+        name="Материал",
+        type=ProductAttribute.AttributeType.CHOICE,
+    )
+    steel = ProductAttributeOption.objects.create(
+        attribute=attribute,
+        value="Сталь",
+    )
+
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        login_url = f"{live_server.url}{reverse('admin:login')}"
+        page.goto(login_url)
+        page.get_by_label("Имя пользователя:").fill(admin_user.username)
+        page.get_by_label("Пароль:").fill("password")
+        page.get_by_role("button", name="Войти").click()
+
+        change_path = reverse(
+            "admin:main_app_product_change",
+            args=[product.pk],
+        )
+        change_url = f"{live_server.url}{change_path}"
+        page.goto(change_url)
+
+        empty_form = page.locator("#attribute_values-empty")
+        expect(empty_form).not_to_have_attribute(
+            "data-product-attribute-values-initialized",
+            "true",
+        )
+
+        page.locator("#attribute_values-group .add-row a").click()
+        added_row = page.locator("#attribute_values-1")
+        expect(added_row).to_be_visible()
+
+        attribute_select = added_row.locator(".field-attribute select")
+        attribute_select.evaluate(
+            """
+            (select, attribute) => {
+                const option = document.createElement("option");
+                option.value = String(attribute.id);
+                option.textContent = attribute.name;
+                option.selected = true;
+                select.appendChild(option);
+                select.dispatchEvent(new Event("change", {bubbles: true}));
+            }
+            """,
+            {"id": attribute.pk, "name": attribute.name},
+        )
+
+        option_field = added_row.locator(".field-option")
+        expect(option_field).to_be_visible()
+        expect(option_field.locator("select")).to_have_value("")
+        expect(option_field.locator(f"option[value='{steel.pk}']")).to_have_text(
+            steel.value
+        )
+
+        browser.close()

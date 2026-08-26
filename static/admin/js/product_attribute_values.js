@@ -231,7 +231,11 @@
     }
 
     function initRow(row) {
-        if (!row || row.dataset.productAttributeValuesInitialized === "true") {
+        if (
+            !row
+            || row.classList.contains("empty-form")
+            || row.dataset.productAttributeValuesInitialized === "true"
+        ) {
             return;
         }
 
@@ -242,7 +246,10 @@
 
     function initAllRows() {
         document
-            .querySelectorAll(".inline-related .field-attribute select, tr.form-row .field-attribute select")
+            .querySelectorAll(
+                "#attribute_values-group .inline-related:not(.empty-form) "
+                + ".field-attribute select"
+            )
             .forEach((attributeInput) => {
                 initRow(getInlineRow(attributeInput));
             });
@@ -288,7 +295,9 @@
     });
 
     document.addEventListener("formset:added", (event) => {
-        initRow(event.target);
+        if (event.detail && event.detail.formsetName === "attribute_values") {
+            initRow(event.target);
+        }
     });
 
     if (document.readyState === "loading") {
