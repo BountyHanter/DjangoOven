@@ -13,5 +13,10 @@ python-slugify
 beautifulsoup4
 lxml
 httpx
+# Парсер через Chrome + Xvfb (runner_test.py).
+# После установки Python-зависимостей на Debian/Ubuntu выполнить:
+#   apt-get update && apt-get install -y xvfb
+#   .venv/bin/python -m playwright install --with-deps chrome
+# Chrome и Xvfb устанавливаются отдельно от pip-пакетов.
 playwright
 pillow
