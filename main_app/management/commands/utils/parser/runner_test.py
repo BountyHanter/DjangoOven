@@ -213,6 +213,7 @@ def fetch_html_playwright(
     channel: str | None = None,
     reduce_automation_signals: bool = False,
     virtual_display: bool = False,
+    ignore_https_errors: bool = False,
 ) -> FetchResult:
     """Загружает страницу; для kamin.ru ожидает возврат с проверки к товару."""
     logger.info("Playwright GET: %s", url)
@@ -227,6 +228,7 @@ def fetch_html_playwright(
                 # User-Agent и HTTP-заголовки формирует сам браузер.
                 context_options = {
                     "locale": "ru-RU",
+                    "ignore_https_errors": ignore_https_errors,
                     "viewport": {"width": 1365, "height": 900},
                 }
                 launch_options = {"headless": headless}
@@ -420,6 +422,8 @@ if __name__ == "__main__":
     test_browser_options = {
         "headless": False,
         "virtual_display": True,
+        # Временный тест: сервер получает просроченный сертификат kamin.ru.
+        "ignore_https_errors": True,
         "channel": "chrome",
         "reduce_automation_signals": True,
         "wait_timeout_ms": 120_000,
