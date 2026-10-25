@@ -8,6 +8,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from main_app.management.commands.utils.parser.apply_result import apply_parser_result
+from main_app.management.commands.utils.parser.kamin_fetcher import KAMIN_DOMAINS, fetch_kamin
 from main_app.management.commands.utils.parser.runner_test import fetch_html_playwright, fetch_html
 from main_app.models.parser import ParserResult
 from main_app.management.commands.utils.parser.config import PLAYWRIGHT_DOMAINS
@@ -56,7 +57,11 @@ def get_parser_queue():
 # выбор fetcher
 # -----------------------------
 def get_fetcher(url: str):
-    domain = urlparse(url).netloc.replace("www.", "")
+    target = urlparse(url)
+    if target.hostname in KAMIN_DOMAINS:
+        return fetch_kamin
+
+    domain = target.netloc.replace("www.", "")
 
     if domain in PLAYWRIGHT_DOMAINS:
         return fetch_html_playwright
